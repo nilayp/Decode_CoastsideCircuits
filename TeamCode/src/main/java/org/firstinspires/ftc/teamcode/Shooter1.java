@@ -6,85 +6,131 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.PwmControl;   // for PWM range
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.teamcode.R;
+
 @TeleOp(name="Shooter1")
 public class Shooter1 extends LinearOpMode {
 
     // ---- CONFIG ----
     // The Stingray-9 in feedback mode has ~200° total travel.
-    private static final double MAX_DEGREES = 200.0;
+    private static final double TURNTABLE_MAX_DEGREES = 200.0;
     // Slew: max degrees per loop step (set to 0 to disable smoothing)
-    private static final double MAX_DEG_PER_STEP = 4.0;
+    private static final double TURNTABLE_MAX_DEG_PER_STEP = 2.0;
 
     private Servo turntable;
-    private PwmControl.PwmRange pwmRange;
+    private PwmControl.PwmRange turntable_pwmRange;
 
-    private double targetDeg = 0.0;     // where we want to go
-    private double currentDeg = 0.0;    // our internal estimate of where we’ve commanded
+    private double turntable_targetDeg = 0.0;     // where we want to go
+    private double turntable_currentDeg = 0.0;    // our internal estimate of where we’ve commanded
+
+    private static final double RAMP_MAX_DEGREES = 200.0;
+    // Slew: max degrees per loop step (set to 0 to disable smoothing)
+    private static final double RAMP_MAX_DEG_PER_STEP = 2.0;
+
+    private Servo ramp;
+    private PwmControl.PwmRange ramp_pwmRange;
+
+    private double ramp_targetDeg = 0.0;     // where we want to go
+    private double ramp_currentDeg = 0.0;    // our internal estimate of where we’ve commanded
 
     @Override
     public void runOpMode() throws InterruptedException {
         turntable = hardwareMap.get(Servo.class, "turntable");
+        ramp = hardwareMap.get(Servo.class, "ramp");
 
         // Match Stingray’s full control band (spec is ~500–2500 µs).
         // This lets 0.0 -> 500 µs and 1.0 -> 2500 µs for full 200°.
         if (turntable instanceof PwmControl) {
-            pwmRange = new PwmControl.PwmRange(500, 2500);
-            ((PwmControl) turntable).setPwmRange(pwmRange);
+            turntable_pwmRange = new PwmControl.PwmRange(500, 2500);
+            ((PwmControl) turntable).setPwmRange(turntable_pwmRange);
         }
 
-        // Start from wherever you want (0° = one mechanical end)
-        targetDeg = 0.0;
-        currentDeg = targetDeg;
-        turntable.setPosition(degToPos(currentDeg));
+        if (ramp instanceof PwmControl) {
+            ramp_pwmRange = new PwmControl.PwmRange(500, 2500);
+            ((PwmControl) ramp).setPwmRange(ramp_pwmRange);
+        }
 
-        telemetry.addLine("Stingray-9 Plate Control (Feedback Mode)");
-        telemetry.addLine("PS4: triangle=0°, square=90°, circle=180°");
-        telemetry.addLine("Dpad Up/Down = ±5° | Left/Right = ±15°");
-        telemetry.addLine("Hold Cross (X) to center to 90°");
-        telemetry.update();
+        // Start from wherever at the center position)
+        turntable_targetDeg = TURNTABLE_MAX_DEGREES / 2;
+        turntable_currentDeg = turntable_targetDeg;
+        turntable.setPosition(degToPos(turntable_currentDeg, TURNTABLE_MAX_DEGREES));
+
+        ramp_targetDeg = RAMP_MAX_DEGREES / 2;
+        ramp_currentDeg = ramp_targetDeg;
+        ramp.setPosition(degToPos(ramp_currentDeg, RAMP_MAX_DEGREES));
 
         waitForStart();
 
         while (opModeIsActive()) {
-            // --- Presets (PS4 aliases work in FTC SDK) ---
-            if (gamepad1.triangle) targetDeg = 0;       // 0°
-            if (gamepad1.square)   targetDeg = 90;      // 90°
-            if (gamepad1.circle)   targetDeg = 180;     // 180°
-            if (gamepad1.cross)    targetDeg = 90;      // quick center
+            // --- Incremental Stick Controls ---
+            // Left stick X controls turntable movement rate
+            double leftStickX = gamepad1.left_stick_x;
+            // Move turntable based on stick input (rate control, not position control)
+            turntable_targetDeg += leftStickX * TURNTABLE_MAX_DEG_PER_STEP; // Adjust RAMP_MAX_DEG_PER_STEP to change movement speed
+            
+            // Right stick Y controls ramp movement rate
+            // Note: gamepad Y is inverted (up = -1, down = +1), so we invert it
+            double rightStickY = -gamepad1.right_stick_y;
+            // Move ramp based on stick input (rate control, not position control)
+            ramp_targetDeg += rightStickY * RAMP_MAX_DEG_PER_STEP; // Adjust RAMP_MAX_DEG_PER_STEP to change movement speed
 
-            // --- Nudge controls ---
-            if (gamepad1.dpad_up)    targetDeg += 5;
-            if (gamepad1.dpad_down)  targetDeg -= 5;
-            if (gamepad1.dpad_right) targetDeg += 15;
-            if (gamepad1.dpad_left)  targetDeg -= 15;
-
-            // Clamp into the physical range
-            targetDeg = Range.clip(targetDeg, 0, MAX_DEGREES);
-
-            // Optional slew (smoothness)
-            if (MAX_DEG_PER_STEP > 0) {
-                double error = targetDeg - currentDeg;
-                double step = Range.clip(error, -MAX_DEG_PER_STEP, MAX_DEG_PER_STEP);
-                currentDeg += step;
-            } else {
-                currentDeg = targetDeg;
+            // --- Button Overrides ---
+            // Dpad-up resets turntable to 100°, or the middle allowable position
+            if (gamepad1.dpad_up) {
+                turntable_targetDeg = TURNTABLE_MAX_DEGREES / 2;
+            }
+            
+            // Triangle resets ramp to 100°, or the middle allowable position
+            if (gamepad1.triangle) {
+                ramp_targetDeg = RAMP_MAX_DEGREES / 2;
             }
 
-            // Command the servo
-            turntable.setPosition(degToPos(currentDeg));
+            // Clamp into the physical range to prevent the servo from trying to move to an
+            // that impossible position.
+            turntable_targetDeg = Range.clip(turntable_targetDeg, 0, TURNTABLE_MAX_DEGREES);
+            ramp_targetDeg = Range.clip(ramp_targetDeg, 0, RAMP_MAX_DEGREES);
 
-            telemetry.addData("Target (deg)", "%.1f", targetDeg);
-            telemetry.addData("Command (deg)", "%.1f", currentDeg);
-            telemetry.addData("Position (0..1)", "%.3f", degToPos(currentDeg));
+            // Optional slew (smoothness) for turntable & ramp
+            // This assures that in each loop cycle, the servo only moves by the 
+            // MAX_DEG_PER_STEP constant and doesn't jerk.
+            if (TURNTABLE_MAX_DEG_PER_STEP > 0) {
+                double error = turntable_targetDeg - turntable_currentDeg;
+                double step = Range.clip(error, -TURNTABLE_MAX_DEG_PER_STEP, TURNTABLE_MAX_DEG_PER_STEP);
+                turntable_currentDeg += step;
+            } else {
+                turntable_currentDeg = turntable_targetDeg;
+            }
+
+            if (RAMP_MAX_DEG_PER_STEP > 0) {
+                double error = ramp_targetDeg - ramp_currentDeg;
+                double step = Range.clip(error, -RAMP_MAX_DEG_PER_STEP, RAMP_MAX_DEG_PER_STEP);
+                ramp_currentDeg += step;
+            } else {
+                ramp_currentDeg = ramp_targetDeg;
+            }
+
+            // Command the servos
+            turntable.setPosition(degToPos(turntable_currentDeg, TURNTABLE_MAX_DEGREES));
+            ramp.setPosition(degToPos(ramp_currentDeg, RAMP_MAX_DEGREES));
+
+            // Telemetry for both servos
+            telemetry.addData("Turntable Target (deg)", "%.1f", turntable_targetDeg);
+            telemetry.addData("Turntable Command (deg)", "%.1f", turntable_currentDeg);
+            telemetry.addData("Turntable Position (0..1)", "%.3f", degToPos(turntable_currentDeg, TURNTABLE_MAX_DEGREES));
+            telemetry.addData("Ramp Target (deg)", "%.1f", ramp_targetDeg);
+            telemetry.addData("Ramp Command (deg)", "%.1f", ramp_currentDeg);
+            telemetry.addData("Ramp Position (0..1)", "%.3f", degToPos(ramp_currentDeg, RAMP_MAX_DEGREES));
+            telemetry.addData("Left Stick X", "%.3f", leftStickX);
+            telemetry.addData("Right Stick Y", "%.3f", rightStickY);
             telemetry.update();
 
             sleep(20); // ~50 Hz loop
         }
     }
 
-    private double degToPos(double deg) {
+    private double degToPos(double deg, double maxDegrees) {
         // Map 0..200° -> 0.0..1.0
-        double pos = deg / MAX_DEGREES;
+        double pos = deg / maxDegrees;
         return Range.clip(pos, 0.0, 1.0);
     }
 }
