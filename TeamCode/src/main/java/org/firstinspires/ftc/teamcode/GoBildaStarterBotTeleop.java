@@ -65,6 +65,8 @@ public class GoBildaStarterBotTeleop extends OpMode {
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
+    double speed_factor = 0.75;
+
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
      * to read the current speed of the motor and apply more or less power to keep it at a constant
@@ -206,7 +208,16 @@ public class GoBildaStarterBotTeleop extends OpMode {
          * both motors work to rotate the robot. Combinations of these inputs can be used to create
          * more complex maneuvers.
          */
-        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x);
+
+        if (gamepad1.left_bumper) {
+            if (speed_factor == 0.75) {
+                speed_factor = 0.5;
+            } else {
+                speed_factor = 0.75;
+            }
+        }
+
+        arcadeDrive(-gamepad1.left_stick_y, gamepad1.right_stick_x,speed_factor);
 
         /*
          * Here we give the user control of the speed of the launcher motor without automatically
@@ -228,8 +239,8 @@ public class GoBildaStarterBotTeleop extends OpMode {
          */
         telemetry.addData("State", launchState);
         telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-        telemetry.addData("motorSpeed", launcher.getVelocity());
-
+        telemetry.addData("Speed Factor", speed_factor);
+        telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
     }
 
     /*
@@ -239,9 +250,9 @@ public class GoBildaStarterBotTeleop extends OpMode {
     public void stop() {
     }
 
-    void arcadeDrive(double forward, double rotate) {
-        leftPower = forward + rotate;
-        rightPower = forward - rotate;
+    void arcadeDrive(double forward, double rotate, double speed_factor) {
+        leftPower = (forward + rotate) * speed_factor;
+        rightPower = (forward - rotate) * speed_factor;
 
         /*
          * Send calculated power to wheels
