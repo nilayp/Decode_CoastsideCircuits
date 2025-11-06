@@ -40,6 +40,7 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -69,6 +70,11 @@ public class TestBench extends OpMode {
 
     double drivePower = 0.50;
 
+    private LED ledLeftGreen = null;
+    private LED ledLeftRed = null;
+    private LED ledRightGreen = null;
+    private LED ledRightRed = null;
+
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -84,6 +90,11 @@ public class TestBench extends OpMode {
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
+        ledLeftGreen = hardwareMap.get(LED.class, "led_left_green");
+        ledLeftRed = hardwareMap.get(LED.class, "led_left_red");
+        ledRightGreen = hardwareMap.get(LED.class, "led_right_green");
+        ledRightRed = hardwareMap.get(LED.class, "led_right_red");
+
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,
@@ -180,6 +191,22 @@ public class TestBench extends OpMode {
             rightFeeder.setPower(1);
         } else {
             rightFeeder.setPower(0);
+        }
+
+        if (gamepad1.triangle) {
+            ledRightRed.on();
+            ledLeftRed.on();
+        } else {
+            ledRightRed.off();
+            ledLeftRed.off();
+        }
+
+        if (gamepad1.circle) {
+            ledRightGreen.on();
+            ledLeftGreen.on();
+        } else {
+            ledRightGreen.off();
+            ledLeftGreen.off();
         }
 
         /*
