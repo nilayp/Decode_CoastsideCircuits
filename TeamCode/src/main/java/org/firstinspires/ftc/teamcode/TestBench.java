@@ -194,19 +194,27 @@ public class TestBench extends OpMode {
         }
 
         if (gamepad1.triangle) {
-            ledRightRed.on();
             ledLeftRed.on();
         } else {
-            ledRightRed.off();
             ledLeftRed.off();
         }
 
-        if (gamepad1.circle) {
-            ledRightGreen.on();
+        if (gamepad1.cross) {
             ledLeftGreen.on();
         } else {
-            ledRightGreen.off();
             ledLeftGreen.off();
+        }
+
+        if (gamepad1.circle) {
+            ledRightRed.on();
+        } else {
+            ledRightRed.off();
+        }
+
+        if (gamepad1.square) {
+            ledRightGreen.on();
+        } else {
+            ledRightGreen.off();
         }
 
         /*
