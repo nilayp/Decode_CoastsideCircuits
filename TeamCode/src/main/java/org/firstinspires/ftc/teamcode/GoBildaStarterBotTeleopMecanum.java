@@ -113,10 +113,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
 
     private LaunchState launchState;
 
-    // Setup a variable for each drive wheel to save power level for telemetry
-    double leftPower;
-    double rightPower;
-
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -126,10 +122,13 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
 
         // Declare our motors
         // Make sure your ID's match your configuration
-        DcMotor frontLeftMotor = hardwareMap.dcMotor.get("frontLeftMotor");
-        DcMotor backLeftMotor = hardwareMap.dcMotor.get("backLeftMotor");
-        DcMotor frontRightMotor = hardwareMap.dcMotor.get("frontRightMotor");
-        DcMotor backRightMotor = hardwareMap.dcMotor.get("backRightMotor");
+        frontLeftMotor = hardwareMap.get(DcMotor.class, "frontLeftMotor");
+        backLeftMotor = hardwareMap.get(DcMotor.class, "backLeftMotor");
+        frontRightMotor = hardwareMap.get(DcMotor.class, "frontRightMotor");
+        backRightMotor = hardwareMap.get(DcMotor.class, "backRightMotor");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+        leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
+        rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,
@@ -197,15 +196,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
      */
     @Override
     public void loop() {
-        /*
-         * Here we call a function called arcadeDrive. The arcadeDrive function takes the input from
-         * the joysticks, and applies power to the left and right drive motor to move the robot
-         * as requested by the driver. "arcade" refers to the control style we're using here.
-         * Much like a classic arcade game, when you move the left joystick forward both motors
-         * work to drive the robot forward, and when you move the right joystick left and right
-         * both motors work to rotate the robot. Combinations of these inputs can be used to create
-         * more complex maneuvers.
-         */
 
         if (gamepad1.left_bumper) {
             if (drivePower == 0.75) {
@@ -233,14 +223,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         backLeftMotor.setPower(backLeftPower);
         backRightMotor.setPower(backRightPower);
 
-        telemetry.addData("frontLeftDrive", frontLeftPower);
-        telemetry.addData("frontRightDrive", frontRightPower);
-        telemetry.addData("backLeftDrive", backLeftPower);
-        telemetry.addData("backRightDrive", backRightPower);
-        telemetry.addData("forward", forward);
-        telemetry.addData("turn", turn);
-        telemetry.addData("Strafe", strafe);
-
         /*
          * Here we give the user control of the speed of the launcher motor without automatically
          * queuing a shot.
@@ -260,8 +242,13 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
          * Show the state and motor powers
          */
         telemetry.addData("State", launchState);
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-        telemetry.addData("Speed Factor", drivePower);
+        telemetry.addData("Motors", "frontLeft (%.2f), frontRight (%.2f), backLeft (%.2f), backRight (%.2f), ",
+                frontLeftPower, frontRightPower, backLeftPower, backRightPower);
+        telemetry.addData("forward", forward);
+        telemetry.addData("turn", turn);
+        telemetry.addData("Strafe", strafe);
+
+        telemetry.addData("Drive Power", drivePower);
         telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
 
         telemetry.update();
