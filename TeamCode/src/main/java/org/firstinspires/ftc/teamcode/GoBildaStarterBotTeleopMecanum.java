@@ -66,7 +66,7 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
-    double drivePower = 0.75;
+    double drivePower = 1.0;
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -208,10 +208,10 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     public void loop() {
 
         if (gamepad1.left_bumper) {
-            if (drivePower == 0.75) {
+            if (drivePower == 1.00) {
                 drivePower = 0.5;
             } else {
-                drivePower = 0.75;
+                drivePower = 1.00;
             }
         }
 
@@ -252,7 +252,7 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         } else {
             ledRightGreen.off();
             ledLeftGreen.off();
-            
+
             ledRightRed.on();
             ledLeftRed.on();
         }
