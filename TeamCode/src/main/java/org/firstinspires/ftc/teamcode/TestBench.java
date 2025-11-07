@@ -54,7 +54,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 * rotating in the correct direction.
 */
 
-@TeleOp(name = "TestBench", group = "StarterBot")
+@TeleOp(name = "TestBench", group = "Software")
 //@Disabled
 public class TestBench extends OpMode {
 

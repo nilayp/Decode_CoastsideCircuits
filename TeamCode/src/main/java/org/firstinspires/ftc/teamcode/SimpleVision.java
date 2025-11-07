@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -15,7 +16,8 @@ import android.util.Size;
 
 import java.util.List;
 
-@TeleOp(name = "SimpleVision")
+@TeleOp(name = "SimpleVision", group = "Software")
+@Disabled
 public class SimpleVision extends LinearOpMode {
 
     private VisionPortal visionPortal;
