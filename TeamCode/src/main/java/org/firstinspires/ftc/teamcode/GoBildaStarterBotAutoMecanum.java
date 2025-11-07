@@ -41,11 +41,17 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 
 /*
@@ -105,6 +111,25 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
     double robotRotationAngle = 45;
 
+    // === TUNE ME: straight-line speed constant (mm/sec) for a given power ===
+    // Measure your robot's travel: drive at known power for N seconds, measure distance in mm, divide.
+    public static double SPEED_MM_PER_SEC_AT_POWER_0p5 = 610; // at full power robot drives 1220mm in ~ 1 second
+
+    // Heading controller gain
+    private static final double kP_heading = 0.03;
+    private static final double MAX_CORR = 0.25;
+
+    private boolean drive_active = false;
+    private boolean rotate_active = false;
+    private double rotate_target = 0.0;
+    private double rotate_startTime = 0.0;
+    private double rotate_timeoutSec = 30.0;
+    private double drive_durationSec;
+    private double drive_elapsedDuration;
+    private double drive_basePower;
+    private boolean drive_straffing = false;
+    private double drive_targetHeadingDeg;
+
     /*
      * Here we create three timers which we use in different parts of our code. Each of these is an
      * "object," so even though they are all an instance of ElapsedTime(), they count independently
@@ -113,13 +138,21 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
     private ElapsedTime shotTimer = new ElapsedTime();
     private ElapsedTime feederTimer = new ElapsedTime();
     private ElapsedTime driveTimer = new ElapsedTime();
+    private ElapsedTime rotateTimer = new ElapsedTime();
 
     // Declare OpMode members.
-    private DcMotor leftDrive = null;
-    private DcMotor rightDrive = null;
+    private DcMotor frontLeftMotor = null;
+    private DcMotor backLeftMotor = null;
+    private DcMotor frontRightMotor = null;
+    private DcMotor backRightMotor = null;
+    private LED ledLeftGreen = null;
+    private LED ledLeftRed = null;
+    private LED ledRightGreen = null;
+    private LED ledRightRed = null;
     private DcMotorEx launcher = null;
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
+    private IMU imu = null;
 
     /*
      * TECH TIP: State Machines
@@ -154,6 +187,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         DRIVING_AWAY_FROM_GOAL,
         ROTATING,
         DRIVING_OFF_LINE,
+        DRIVE_BACKWARDS,
         COMPLETE;
     }
 
@@ -191,36 +225,43 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
          * to 'get' must correspond to the names assigned during the robot configuration
          * step (using the FTC Robot Controller app on the driver's station).
          */
-        leftDrive  = hardwareMap.get(DcMotor.class, "left_drive");
-        rightDrive = hardwareMap.get(DcMotor.class, "right_drive");
-        launcher = hardwareMap.get(DcMotorEx.class,"launcher");
+        frontLeftMotor = hardwareMap.get(DcMotor.class, "frontLeftMotor");
+        backLeftMotor = hardwareMap.get(DcMotor.class, "backLeftMotor");
+        frontRightMotor = hardwareMap.get(DcMotor.class, "frontRightMotor");
+        backRightMotor = hardwareMap.get(DcMotor.class, "backRightMotor");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
-
+        ledLeftGreen = hardwareMap.get(LED.class, "led_left_green");
+        ledLeftRed = hardwareMap.get(LED.class, "led_left_red");
+        ledRightGreen = hardwareMap.get(LED.class, "led_right_green");
+        ledRightRed = hardwareMap.get(LED.class, "led_right_red");
+        imu = hardwareMap.get(IMU.class, "imu");
 
         /*
          * To drive forward, most robots need the motor on one side to be reversed,
-         * because the axles point in opposite directions. Pushing the left stick forward
-         * MUST make the robot go forward. So, adjust these two lines based on your first test drive.
-         * Note: The settings here assume direct drive on left and right wheels. Gear
-         * Reduction or 90° drives may require direction flips
+         * because the axles point in opposite directions.
          */
-        leftDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         /*
-         * Here we reset the encoders on our drive motors before we start moving.
+         * Run the drive motors without encoders.
          */
-        leftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         /*
          * Setting zeroPowerBehavior to BRAKE enables a "brake mode." This causes the motor to
          * slow down much faster when it is coasting. This creates a much more controllable
          * drivetrain, as the robot stops much quicker.
          */
-        leftDrive.setZeroPowerBehavior(BRAKE);
-        rightDrive.setZeroPowerBehavior(BRAKE);
+        frontLeftMotor.setZeroPowerBehavior(BRAKE);
+        backLeftMotor.setZeroPowerBehavior(BRAKE);
+        frontRightMotor.setZeroPowerBehavior(BRAKE);
+        backRightMotor.setZeroPowerBehavior(BRAKE);
         launcher.setZeroPowerBehavior(BRAKE);
 
         /*
@@ -243,6 +284,18 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
          */
         leftFeeder.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        /*
+        * Initialize the IMU and set the correct orientation
+        */
+
+        IMU.Parameters parms = new IMU.Parameters(new RevHubOrientationOnRobot(
+                        RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
+                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                )
+        );
+        imu.initialize(parms);
+        imu.resetYaw();
+
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -260,18 +313,17 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         rightFeeder.setPower(0);
         leftFeeder.setPower(0);
 
-
         /*
          * Here we allow the driver to select which alliance we are on using the gamepad.
          */
-        if (gamepad1.b) {
+        if (gamepad1.circle) {
             alliance = Alliance.RED;
-        } else if (gamepad1.x) {
+        } else if (gamepad1.square) {
             alliance = Alliance.BLUE;
         }
 
-        telemetry.addData("Press X", "for BLUE");
-        telemetry.addData("Press B", "for RED");
+        telemetry.addData("Press SQUARE", "for BLUE");
+        telemetry.addData("Press CIRCLE", "for RED");
         telemetry.addData("Selected Alliance", alliance);
     }
 
@@ -287,6 +339,23 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     @Override
     public void loop() {
+        drive_update();
+        rotate_update();
+
+        if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
+            ledRightRed.off();
+            ledLeftRed.off();
+
+            ledRightGreen.on();
+            ledLeftGreen.on();
+        } else {
+            ledRightGreen.off();
+            ledLeftGreen.off();
+
+            ledRightRed.on();
+            ledLeftRed.on();
+        }
+
         /*
          * TECH TIP: Switch Statements
          * switch statements are an excellent way to take advantage of an enum. They work very
@@ -327,8 +396,6 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                     if(shotsToFire > 0) {
                         autonomousState = AutonomousState.LAUNCH;
                     } else {
-                        leftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                        rightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                         launcher.setVelocity(0);
                         autonomousState = AutonomousState.DRIVING_AWAY_FROM_GOAL;
                     }
@@ -337,33 +404,33 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
             case DRIVING_AWAY_FROM_GOAL:
                 /*
-                 * This is another function that returns a boolean. This time we return "true" if
-                 * the robot has been within a tolerance of the target position for "holdSeconds."
-                 * Once the function returns "true" we reset the encoders again and move on.
+                 * Move the robot using timing. (We don't have encoder cables attached to the
+                 * robot at this point.)
                  */
-                if(drive(DRIVE_SPEED, -4, DistanceUnit.INCH, 1)){
-                    leftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                    rightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                if(startDriveDistance(-600, DRIVE_SPEED, false)) {
                     autonomousState = AutonomousState.ROTATING;
-                }
+                };
                 break;
 
             case ROTATING:
                 if(alliance == Alliance.RED){
-                    robotRotationAngle = 45;
+                    robotRotationAngle = 50;
                 } else if (alliance == Alliance.BLUE){
-                    robotRotationAngle = -45;
+                    robotRotationAngle = -50;
                 }
 
                 if(rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES,1)){
-                    leftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                    rightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     autonomousState = AutonomousState.DRIVING_OFF_LINE;
                 }
                 break;
 
             case DRIVING_OFF_LINE:
-                if(drive(DRIVE_SPEED, -26, DistanceUnit.INCH, 1)){
+                if(startDriveDistance(850, DRIVE_SPEED, true)){
+                    autonomousState = AutonomousState.DRIVE_BACKWARDS;
+                }
+                break;
+            case DRIVE_BACKWARDS:
+                if(startDriveDistance(-300, DRIVE_SPEED, false)){
                     autonomousState = AutonomousState.COMPLETE;
                 }
                 break;
@@ -379,10 +446,6 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
          */
         telemetry.addData("AutoState", autonomousState);
         telemetry.addData("LauncherState", launchState);
-        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
-                leftDrive.getCurrentPosition(), rightDrive.getCurrentPosition());
-        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
-                leftDrive.getTargetPosition(), rightDrive.getTargetPosition());
         telemetry.update();
     }
 
@@ -432,93 +495,122 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         return false;
     }
 
-    /**
-     * @param speed From 0-1
-     * @param distance In specified unit
-     * @param distanceUnit the unit of measurement for distance
-     * @param holdSeconds the number of seconds to wait at position before returning true.
-     * @return "true" if the motors are within tolerance of the target position for more than
-     * holdSeconds. "false" otherwise.
-     */
-    boolean drive(double speed, double distance, DistanceUnit distanceUnit, double holdSeconds) {
-        final double TOLERANCE_MM = 10;
-        /*
-         * In this function we use a DistanceUnits. This is a class that the FTC SDK implements
-         * which allows us to accept different input units depending on the user's preference.
-         * To use these, put both a double and a DistanceUnit as parameters in a function and then
-         * call distanceUnit.toMm(distance). This will return the number of mm that are equivalent
-         * to whatever distance in the unit specified. We are working in mm for this, so that's the
-         * unit we request from distanceUnit. But if we want to use inches in our function, we could
-         * use distanceUnit.toInches() instead!
-         */
-        double targetPosition = (distanceUnit.toMm(distance) * TICKS_PER_MM);
-
-        leftDrive.setTargetPosition((int) targetPosition);
-        rightDrive.setTargetPosition((int) targetPosition);
-
-        leftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        rightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        leftDrive.setPower(speed);
-        rightDrive.setPower(speed);
-
-        /*
-         * Here we check if we are within tolerance of our target position or not. We calculate the
-         * absolute error (distance from our setpoint regardless of if it is positive or negative)
-         * and compare that to our tolerance. If we have not reached our target yet, then we reset
-         * the driveTimer. Only after we reach the target can the timer count higher than our
-         * holdSeconds variable.
-         */
-        if(Math.abs(targetPosition - leftDrive.getCurrentPosition()) > (TOLERANCE_MM * TICKS_PER_MM)){
+    /** Start driving for an estimated distance (mm) and return whether the drive is complete. */
+    public boolean startDriveDistance(double distanceMM, double basePower, boolean straffing) {
+        if (!drive_active) {
+            drive_durationSec = Math.abs(distanceMM) / SPEED_MM_PER_SEC_AT_POWER_0p5;
+            drive_basePower = distanceMM >= 0 ? -basePower : basePower;
+            drive_straffing = straffing;
+            drive_active = true;
             driveTimer.reset();
         }
 
-        return (driveTimer.seconds() > holdSeconds);
+        drive_elapsedDuration = driveTimer.seconds();
+        if (drive_elapsedDuration >= drive_durationSec) {
+            stopAll();
+            drive_active = false;
+            return true; // Drive is complete
+        } else {
+            return false; // Drive is still in progress
+        }
+    }
+    /** Call this every loop(). Handles the active driving if started. */
+    public void drive_update() {
+        if (!drive_active) return;
+
+        if (drive_elapsedDuration >= drive_durationSec) {
+            stopAll();
+            drive_active = false;
+            return;
+        }
+
+        double forward = 0.0;
+        double strafe = 0.0;
+        if (drive_straffing) {
+            strafe = drive_basePower;
+        } else {
+            forward = drive_basePower;
+        }
+        setMecanum(forward, 0, strafe);
+
+        telemetry.addData("Driving", "%.1f/%.1f sec", drive_elapsedDuration, drive_durationSec);
+        telemetry.update();
+    }
+
+    public boolean isBusy() {
+        return drive_active;
+    }
+
+    private void setMecanum(double forward, double turn, double strafe) {
+
+        double frontLeftPower = (forward + turn + strafe);
+        double frontRightPower = (forward - turn - strafe);
+        double backLeftPower = (forward + turn - strafe);
+        double backRightPower = (forward - turn + strafe);
+
+        frontLeftMotor.setPower(frontLeftPower);
+        frontRightMotor.setPower(frontRightPower);
+        backLeftMotor.setPower(backLeftPower);
+        backRightMotor.setPower(backRightPower);
+    }
+
+    private void stopAll() {
+        setMecanum(0, 0, 0);
+    }
+
+    private double getYawDeg() {
+        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
+        return ypr.getYaw(AngleUnit.DEGREES);
+    }
+
+    private static double wrapAngleDeg(double a) {
+        while (a > 180) a -= 360;
+        while (a <= -180) a += 360;
+        return a;
+    }
+
+    private static double clamp(double v, double lo, double hi) {
+        return Math.max(lo, Math.min(hi, v));
     }
 
     /**
-     * @param speed From 0-1
-     * @param angle the amount that the robot should rotate
-     * @param angleUnit the unit that angle is in
-     * @param holdSeconds the number of seconds to wait at position before returning true.
-     * @return True if the motors are within tolerance of the target position for more than
-     *         holdSeconds. False otherwise.
+     * Rotates the robot to a specific angle using the IMU.
+     * @param speed The speed at which to rotate (0 to 1).
+     * @param targetAngle The target angle to rotate to, in degrees.
+     * @param angleUnit The unit of the angle (e.g., DEGREES).
+     * @param timeoutSec The maximum time to attempt the rotation, in seconds.
+     * @return True if the rotation is complete, false otherwise.
      */
-    boolean rotate(double speed, double angle, AngleUnit angleUnit, double holdSeconds){
-        final double TOLERANCE_MM = 10;
+    public boolean rotate(double speed, double targetAngle, AngleUnit angleUnit, double timeoutSec) {
+        rotateTimer.reset();
+        rotate_startTime = rotateTimer.seconds();
+        double currentAngle = getYawDeg();
+        rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
+        double error = wrapAngleDeg(rotate_target - currentAngle);
+        rotate_active = true;
+        return Math.abs(error) <= 1;
+    }
+    public void rotate_update() {
+        if (!rotate_active) return;
 
-        /*
-         * Here we establish the number of mm that our drive wheels need to cover to create the
-         * requested angle. We use radians here because it makes the math much easier.
-         * Our robot will have rotated one radian when the wheels of the robot have driven
-         * 1/2 of the track width of our robot in a circle. This is also the radius of the circle
-         * that the robot tracks when it is rotating. So, to find the number of mm that our wheels
-         * need to travel, we just need to multiply the requested angle in radians by the radius
-         * of our turning circle.
-         */
-        double targetMm = angleUnit.toRadians(angle)*(TRACK_WIDTH_MM/2);
+        double currentAngle = getYawDeg();
+        double error = wrapAngleDeg(rotate_target - currentAngle);
 
-        /*
-         * We need to set the left motor to the inverse of the target so that we rotate instead
-         * of driving straight.
-         */
-        double leftTargetPosition = -(targetMm*TICKS_PER_MM);
-        double rightTargetPosition = targetMm*TICKS_PER_MM;
+        if (Math.abs(error) > 1 && (rotateTimer.seconds() - rotate_startTime) < rotate_timeoutSec) {
+            double correction_speed = 0.20;
+            setMecanum(0, correction_speed, 0);
 
-        leftDrive.setTargetPosition((int) leftTargetPosition);
-        rightDrive.setTargetPosition((int) rightTargetPosition);
+            currentAngle = getYawDeg();
+            error = wrapAngleDeg(rotate_target - currentAngle);
 
-        leftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        rightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        leftDrive.setPower(speed);
-        rightDrive.setPower(speed);
-
-        if((Math.abs(leftTargetPosition - leftDrive.getCurrentPosition())) > (TOLERANCE_MM * TICKS_PER_MM)){
-            driveTimer.reset();
+            telemetry.addData("Time", "Start: %.1f, Elapsed: %.1f, Timeout: %.1f", rotate_startTime, driveTimer.seconds(), rotate_timeoutSec);
+            telemetry.addData("Rotating", "Target: %.1f, Current: %.1f, Error: %.1f", rotate_target, currentAngle, error);
+            telemetry.update();
+        } else {
+            rotate_active = false;
+            stopAll();
         }
 
-        return (driveTimer.seconds() > holdSeconds);
     }
 }
 
