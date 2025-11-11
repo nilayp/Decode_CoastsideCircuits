@@ -425,7 +425,14 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                 break;
 
             case DRIVING_OFF_LINE:
-                if(startDriveDistance(850, DRIVE_SPEED, true)){
+
+                double distance = 700;
+
+                if (alliance == Alliance.BLUE){
+                    distance = distance * -1.0;
+                }
+
+                if(startDriveDistance(distance, DRIVE_SPEED, true)){
                     autonomousState = AutonomousState.DRIVE_BACKWARDS;
                 }
                 break;
@@ -582,12 +589,15 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      * @return True if the rotation is complete, false otherwise.
      */
     public boolean rotate(double speed, double targetAngle, AngleUnit angleUnit, double timeoutSec) {
-        rotateTimer.reset();
-        rotate_startTime = rotateTimer.seconds();
-        double currentAngle = getYawDeg();
-        rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
-        double error = wrapAngleDeg(rotate_target - currentAngle);
-        rotate_active = true;
+        double error = 0.0;
+        if (!drive_active) {
+            rotateTimer.reset();
+            rotate_startTime = rotateTimer.seconds();
+            double currentAngle = getYawDeg();
+            rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
+            error = wrapAngleDeg(rotate_target - currentAngle);
+            rotate_active = true;
+        }
         return Math.abs(error) <= 1;
     }
     public void rotate_update() {
@@ -597,7 +607,12 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         double error = wrapAngleDeg(rotate_target - currentAngle);
 
         if (Math.abs(error) > 1 && (rotateTimer.seconds() - rotate_startTime) < rotate_timeoutSec) {
+
             double correction_speed = 0.20;
+            if (error < 0) {
+                correction_speed = correction_speed * -1.0;
+            }
+
             setMecanum(0, correction_speed, 0);
 
             currentAngle = getYawDeg();
