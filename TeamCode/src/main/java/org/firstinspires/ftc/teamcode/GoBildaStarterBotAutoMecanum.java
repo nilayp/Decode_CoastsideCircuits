@@ -47,10 +47,8 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 
@@ -102,10 +100,6 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     final double DRIVE_SPEED = 0.5;
     final double ROTATE_SPEED = 0.2;
-    final double WHEEL_DIAMETER_MM = 96;
-    final double ENCODER_TICKS_PER_REV = 537.7;
-    final double TICKS_PER_MM = (ENCODER_TICKS_PER_REV / (WHEEL_DIAMETER_MM * Math.PI));
-    final double TRACK_WIDTH_MM = 404;
 
     int shotsToFire = 3; //The number of shots to fire in this auto.
 
@@ -115,20 +109,13 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
     // Measure your robot's travel: drive at known power for N seconds, measure distance in mm, divide.
     public static double SPEED_MM_PER_SEC_AT_POWER_0p5 = 610; // at full power robot drives 1220mm in ~ 1 second
 
-    // Heading controller gain
-    private static final double kP_heading = 0.03;
-    private static final double MAX_CORR = 0.25;
-
     private boolean drive_active = false;
     private boolean rotate_active = false;
     private double rotate_target = 0.0;
     private double rotate_startTime = 0.0;
-    private double rotate_timeoutSec = 30.0;
     private double drive_durationSec;
-    private double drive_elapsedDuration;
     private double drive_basePower;
     private boolean drive_straffing = false;
-    private double drive_targetHeadingDeg;
 
     /*
      * Here we create three timers which we use in different parts of our code. Each of these is an
@@ -339,9 +326,6 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     @Override
     public void loop() {
-        drive_update();
-        rotate_update();
-
         if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
             ledRightRed.off();
             ledLeftRed.off();
@@ -419,7 +403,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                     robotRotationAngle = -50;
                 }
 
-                if(rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES,1)){
+                if(rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES,30)){
                     autonomousState = AutonomousState.DRIVING_OFF_LINE;
                 }
                 break;
@@ -511,41 +495,25 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
             drive_active = true;
             driveTimer.reset();
         }
-
-        drive_elapsedDuration = driveTimer.seconds();
+        double drive_elapsedDuration = driveTimer.seconds();
         if (drive_elapsedDuration >= drive_durationSec) {
             stopAll();
             drive_active = false;
             return true; // Drive is complete
         } else {
+            double forward = 0.0;
+            double strafe = 0.0;
+            if (drive_straffing) {
+                strafe = drive_basePower;
+            } else {
+                forward = drive_basePower;
+            }
+            setMecanum(forward, 0, strafe);
+
+            telemetry.addData("Driving", "%.1f/%.1f sec", drive_elapsedDuration, drive_durationSec);
+            telemetry.update();
             return false; // Drive is still in progress
         }
-    }
-    /** Call this every loop(). Handles the active driving if started. */
-    public void drive_update() {
-        if (!drive_active) return;
-
-        if (drive_elapsedDuration >= drive_durationSec) {
-            stopAll();
-            drive_active = false;
-            return;
-        }
-
-        double forward = 0.0;
-        double strafe = 0.0;
-        if (drive_straffing) {
-            strafe = drive_basePower;
-        } else {
-            forward = drive_basePower;
-        }
-        setMecanum(forward, 0, strafe);
-
-        telemetry.addData("Driving", "%.1f/%.1f sec", drive_elapsedDuration, drive_durationSec);
-        telemetry.update();
-    }
-
-    public boolean isBusy() {
-        return drive_active;
     }
 
     private void setMecanum(double forward, double turn, double strafe) {
@@ -576,10 +544,6 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         return a;
     }
 
-    private static double clamp(double v, double lo, double hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
-
     /**
      * Rotates the robot to a specific angle using the IMU.
      * @param speed The speed at which to rotate (0 to 1).
@@ -589,43 +553,37 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      * @return True if the rotation is complete, false otherwise.
      */
     public boolean rotate(double speed, double targetAngle, AngleUnit angleUnit, double timeoutSec) {
-        double error = 0.0;
-        if (!drive_active) {
-            rotateTimer.reset();
-            rotate_startTime = rotateTimer.seconds();
-            double currentAngle = getYawDeg();
-            rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
-            error = wrapAngleDeg(rotate_target - currentAngle);
-            rotate_active = true;
-        }
-        return Math.abs(error) <= 1;
-    }
-    public void rotate_update() {
-        if (!rotate_active) return;
-
         double currentAngle = getYawDeg();
         double error = wrapAngleDeg(rotate_target - currentAngle);
 
-        if (Math.abs(error) > 1 && (rotateTimer.seconds() - rotate_startTime) < rotate_timeoutSec) {
+        if (!rotate_active) {
+            rotateTimer.reset();
+            rotate_startTime = rotateTimer.seconds();
+            rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
+            rotate_active = true;
+        }
 
-            double correction_speed = 0.20;
+        if (Math.abs(error) > 1 && (rotateTimer.seconds() - rotate_startTime) < timeoutSec) {
             if (error < 0) {
-                correction_speed = correction_speed * -1.0;
+                speed = speed * -1.0;
             }
 
-            setMecanum(0, correction_speed, 0);
+            setMecanum(0, speed, 0);
 
             currentAngle = getYawDeg();
             error = wrapAngleDeg(rotate_target - currentAngle);
 
-            telemetry.addData("Time", "Start: %.1f, Elapsed: %.1f, Timeout: %.1f", rotate_startTime, driveTimer.seconds(), rotate_timeoutSec);
+            telemetry.addData("Time", "Start: %.1f, Elapsed: %.1f, Timeout: %.1f", rotate_startTime, driveTimer.seconds(), timeoutSec);
             telemetry.addData("Rotating", "Target: %.1f, Current: %.1f, Error: %.1f", rotate_target, currentAngle, error);
             telemetry.update();
+
+            return false; // rotation has not yet completed.
+
         } else {
             rotate_active = false;
             stopAll();
+            return true; // rotate has completed.
         }
-
     }
 }
 
