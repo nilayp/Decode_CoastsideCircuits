@@ -377,7 +377,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                  * and move onto the next state.
                  */
                 if(launch(false)) {
-                    shotsToFire -= 1;
+                    shotsToFire = shotsToFire - 1;
                     if(shotsToFire > 0) {
                         autonomousState = AutonomousState.LAUNCH;
                     } else {
