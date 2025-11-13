@@ -103,29 +103,18 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
     int shotsToFire = 3; //The number of shots to fire in this auto.
 
-    double robotRotationAngle = 45;
-
     // === TUNE ME: straight-line speed constant (mm/sec) for a given power ===
     // Measure your robot's travel: drive at known power for N seconds, measure distance in mm, divide.
     public static double SPEED_MM_PER_SEC_AT_POWER_0p5 = 610; // at full power robot drives 1220mm in ~ 1 second
-
-    private boolean drive_active = false;
-    private boolean rotate_active = false;
-    private double rotate_target = 0.0;
-    private double rotate_startTime = 0.0;
-    private double drive_durationSec;
-    private double drive_basePower;
-    private boolean drive_straffing = false;
 
     /*
      * Here we create three timers which we use in different parts of our code. Each of these is an
      * "object," so even though they are all an instance of ElapsedTime(), they count independently
      * from each other.
      */
-    private ElapsedTime shotTimer = new ElapsedTime();
-    private ElapsedTime feederTimer = new ElapsedTime();
-    private ElapsedTime driveTimer = new ElapsedTime();
-    private ElapsedTime rotateTimer = new ElapsedTime();
+    private final ElapsedTime shotTimer = new ElapsedTime();
+    private final ElapsedTime feederTimer = new ElapsedTime();
+    private final ElapsedTime driveTimer = new ElapsedTime();
 
     // Declare OpMode members.
     private DcMotor frontLeftMotor = null;
@@ -192,6 +181,18 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      * When we create the instance of our enum we can also assign a default state.
      */
     private Alliance alliance = Alliance.RED;
+
+    // Create an enum to keep track whether or not the robot is moving. The three states
+    // here are STOPPED when it's not moving. DRIVING when it's going forward, backwards or straffing
+    // and ROTATING when it's rotating.
+
+    private enum RobotInMotion {
+        STOPPED,
+        DRIVING,
+        ROTATING;
+    }
+
+    private RobotInMotion robotInMotion = RobotInMotion.STOPPED;
 
     /*
      * This code runs ONCE when the driver hits INIT.
@@ -397,13 +398,13 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                 break;
 
             case ROTATING:
-                if(alliance == Alliance.RED){
-                    robotRotationAngle = 50;
-                } else if (alliance == Alliance.BLUE){
-                    robotRotationAngle = -50;
+                double robotRotationAngle = 50;
+
+                if (alliance == Alliance.BLUE) {
+                    robotRotationAngle = robotRotationAngle * -1;
                 }
 
-                if(rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES,30)){
+                if(rotate(ROTATE_SPEED, robotRotationAngle)){
                     autonomousState = AutonomousState.DRIVING_OFF_LINE;
                 }
                 break;
@@ -488,31 +489,41 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
     /** Start driving for an estimated distance (mm) and return whether the drive is complete. */
     public boolean startDriveDistance(double distanceMM, double basePower, boolean straffing) {
-        if (!drive_active) {
-            drive_durationSec = Math.abs(distanceMM) / SPEED_MM_PER_SEC_AT_POWER_0p5;
-            drive_basePower = distanceMM >= 0 ? -basePower : basePower;
-            drive_straffing = straffing;
-            drive_active = true;
+        if (robotInMotion == RobotInMotion.STOPPED) {
+            robotInMotion = RobotInMotion.DRIVING;
             driveTimer.reset();
         }
-        double drive_elapsedDuration = driveTimer.seconds();
-        if (drive_elapsedDuration >= drive_durationSec) {
-            stopAll();
-            drive_active = false;
-            return true; // Drive is complete
+
+        double driveDurationSec = Math.abs(distanceMM) / SPEED_MM_PER_SEC_AT_POWER_0p5;
+
+        if (distanceMM >= 0) {
+            basePower = -basePower;
+        }
+
+        double driveElapsedDuration = driveTimer.seconds();
+        if (driveElapsedDuration >= driveDurationSec) {
+            // Drive is complete. Stop the robot and return true.
+
+            setMecanum(0, 0, 0);
+            robotInMotion = RobotInMotion.STOPPED;
+            return true;
         } else {
+            // Drive is still in progress.
+
             double forward = 0.0;
             double strafe = 0.0;
-            if (drive_straffing) {
-                strafe = drive_basePower;
+
+            if (straffing) {
+                strafe = basePower;
             } else {
-                forward = drive_basePower;
+                forward = basePower;
             }
+
             setMecanum(forward, 0, strafe);
 
-            telemetry.addData("Driving", "%.1f/%.1f sec", drive_elapsedDuration, drive_durationSec);
+            telemetry.addData("Driving", "%.1f/%.1f sec", driveElapsedDuration, driveDurationSec);
             telemetry.update();
-            return false; // Drive is still in progress
+            return false;
         }
     }
 
@@ -529,18 +540,13 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         backRightMotor.setPower(backRightPower);
     }
 
-    private void stopAll() {
-        setMecanum(0, 0, 0);
-    }
-
-    private double getYawDeg() {
-        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
-        return ypr.getYaw(AngleUnit.DEGREES);
-    }
-
     private static double wrapAngleDeg(double a) {
-        while (a > 180) a -= 360;
-        while (a <= -180) a += 360;
+        while (a > 180) {
+            a = a - 360;
+        }
+        while (a <= -180) {
+            a = a + 360;
+        }
         return a;
     }
 
@@ -548,41 +554,35 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      * Rotates the robot to a specific angle using the IMU.
      * @param speed The speed at which to rotate (0 to 1).
      * @param targetAngle The target angle to rotate to, in degrees.
-     * @param angleUnit The unit of the angle (e.g., DEGREES).
-     * @param timeoutSec The maximum time to attempt the rotation, in seconds.
      * @return True if the rotation is complete, false otherwise.
      */
-    public boolean rotate(double speed, double targetAngle, AngleUnit angleUnit, double timeoutSec) {
-        double currentAngle = getYawDeg();
-        double error = wrapAngleDeg(rotate_target - currentAngle);
+    public boolean rotate(double speed, double targetAngle) {
+        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
+        double currentAngle = ypr.getYaw(AngleUnit.DEGREES);
+        double error = wrapAngleDeg(targetAngle - currentAngle);
 
-        if (!rotate_active) {
-            rotateTimer.reset();
-            rotate_startTime = rotateTimer.seconds();
-            rotate_target = angleUnit == AngleUnit.DEGREES ? targetAngle : Math.toDegrees(targetAngle);
-            rotate_active = true;
+        if (robotInMotion == RobotInMotion.STOPPED) {
+            robotInMotion = RobotInMotion.ROTATING;
         }
 
-        if (Math.abs(error) > 1 && (rotateTimer.seconds() - rotate_startTime) < timeoutSec) {
+        if (Math.abs(error) > 1) {
             if (error < 0) {
                 speed = speed * -1.0;
             }
 
             setMecanum(0, speed, 0);
+            error = wrapAngleDeg(targetAngle - currentAngle);
 
-            currentAngle = getYawDeg();
-            error = wrapAngleDeg(rotate_target - currentAngle);
-
-            telemetry.addData("Time", "Start: %.1f, Elapsed: %.1f, Timeout: %.1f", rotate_startTime, driveTimer.seconds(), timeoutSec);
-            telemetry.addData("Rotating", "Target: %.1f, Current: %.1f, Error: %.1f", rotate_target, currentAngle, error);
+            telemetry.addData("Rotating", "Target: %.1f, Current: %.1f, Error: %.1f", targetAngle, currentAngle, error);
             telemetry.update();
 
             return false; // rotation has not yet completed.
 
         } else {
-            rotate_active = false;
-            stopAll();
-            return true; // rotate has completed.
+            // Robot has completed rotation.
+            setMecanum(0,0,0);
+            robotInMotion = RobotInMotion.STOPPED;
+            return true;
         }
     }
 }
