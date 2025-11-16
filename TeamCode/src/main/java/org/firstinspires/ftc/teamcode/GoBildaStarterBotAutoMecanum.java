@@ -121,10 +121,15 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
     private DcMotor backLeftMotor = null;
     private DcMotor frontRightMotor = null;
     private DcMotor backRightMotor = null;
-    private LED ledLeftGreen = null;
-    private LED ledLeftRed = null;
-    private LED ledRightGreen = null;
-    private LED ledRightRed = null;
+    private LED led1LeftGreen = null;
+    private LED led1LeftRed = null;
+    private LED led1RightGreen = null;
+    private LED led1RightRed = null;
+
+    private LED led2LeftGreen = null;
+    private LED led2LeftRed = null;
+    private LED led2RightGreen = null;
+    private LED led2RightRed = null;
     private DcMotorEx launcher = null;
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
@@ -220,10 +225,14 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
-        ledLeftGreen = hardwareMap.get(LED.class, "led_left_green");
-        ledLeftRed = hardwareMap.get(LED.class, "led_left_red");
-        ledRightGreen = hardwareMap.get(LED.class, "led_right_green");
-        ledRightRed = hardwareMap.get(LED.class, "led_right_red");
+        led1LeftGreen = hardwareMap.get(LED.class, "led1_left_green");
+        led1LeftRed = hardwareMap.get(LED.class, "led1_left_red");
+        led1RightGreen = hardwareMap.get(LED.class, "led1_right_green");
+        led1RightRed = hardwareMap.get(LED.class, "led1_right_red");
+        led2LeftGreen = hardwareMap.get(LED.class, "led2_left_green");
+        led2LeftRed = hardwareMap.get(LED.class, "led2_left_red");
+        led2RightGreen = hardwareMap.get(LED.class, "led2_right_green");
+        led2RightRed = hardwareMap.get(LED.class, "led2_right_red");
         imu = hardwareMap.get(IMU.class, "imu");
 
         /*
@@ -310,9 +319,50 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
             alliance = Alliance.BLUE;
         }
 
+        // LED 1 is used to indicate whether the robot is positioned
+        // for the red goal or the blue goal.
+        // RED LED is for RED GOAL.
+        // GREEN LED BLUE GOAL.
+
+        if (alliance == Alliance.RED) {
+            led1RightRed.on();
+            led1LeftRed.on();
+
+            led1RightGreen.off();
+            led1LeftGreen.off();
+        } else {
+            led1RightGreen.on();
+            led1LeftGreen.on();
+
+            led1RightRed.off();
+            led1LeftRed.off();
+        }
+
+        // LED 2 is used to indicate whether the robot's current yaw is
+        // near zero. If it's not, the robot has been initialized before
+        // it was placed on the field.
+
+        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
+        double currentAngle = ypr.getYaw(AngleUnit.DEGREES);
+
+        if (currentAngle > -0.1 && currentAngle < 0.1) {
+            led2RightGreen.on();
+            led2LeftGreen.on();
+
+            led2RightRed.off();
+            led2LeftRed.off();
+        } else {
+            led2RightGreen.off();
+            led2LeftGreen.off();
+
+            led2RightRed.on();
+            led2LeftRed.on();
+        }
+
         telemetry.addData("Press SQUARE", "for BLUE");
         telemetry.addData("Press CIRCLE", "for RED");
         telemetry.addData("Selected Alliance", alliance);
+        telemetry.addData("Current Angle Header", currentAngle);
     }
 
     /*
@@ -320,6 +370,16 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     @Override
     public void start() {
+
+        // Turn off the LEDs
+        led1RightGreen.off();
+        led1LeftGreen.off();
+        led1RightRed.off();
+        led1LeftRed.off();
+        led2RightGreen.off();
+        led2LeftGreen.off();
+        led2RightRed.off();
+        led2LeftRed.off();
     }
 
     /*
@@ -327,19 +387,27 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     @Override
     public void loop() {
+
+        // LED 1 is used to indicate whether or not the launcher
+        // is at proper velocity.
+
         if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
-            ledRightRed.off();
-            ledLeftRed.off();
+            led1RightRed.off();
+            led1LeftRed.off();
 
-            ledRightGreen.on();
-            ledLeftGreen.on();
+            led1RightGreen.on();
+            led1LeftGreen.on();
         } else {
-            ledRightGreen.off();
-            ledLeftGreen.off();
+            led1RightGreen.off();
+            led1LeftGreen.off();
 
-            ledRightRed.on();
-            ledLeftRed.on();
+            led1RightRed.on();
+            led1LeftRed.on();
         }
+
+        // LED 2 is used to indicate whether the limelight is reporting that
+        // the robot is in the correct spot to reliably shoot a goal. The correct
+        // spot is dependent on the currently selected alliance and
 
         /*
          * TECH TIP: Switch Statements
