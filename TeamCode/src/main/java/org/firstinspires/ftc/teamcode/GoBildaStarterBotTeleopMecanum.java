@@ -43,6 +43,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.mechanisms.ccDrive;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLED;
 
 /*
@@ -66,7 +67,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
-    double drivePower = 1.0;
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -89,10 +89,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
 
     // Declare OpMode members.
 
-    private DcMotor frontLeftMotor = null;
-    private DcMotor backLeftMotor = null;
-    private DcMotor frontRightMotor = null;
-    private DcMotor backRightMotor = null;
     private DcMotorEx launcher = null;
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
@@ -101,6 +97,8 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     private ccLED led1Right = null;
     private ccLED led2Left = null;
     private ccLED led2Right = null;
+
+    private ccDrive drive = null;
 
     ElapsedTime feederTimer = new ElapsedTime();
 
@@ -143,27 +141,17 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     public void init() {
         launchState = LaunchState.IDLE;
 
-        // Declare our motors & other gear
-        // Make sure your ID's match your configuration
-        frontLeftMotor = hardwareMap.get(DcMotor.class, "frontLeftMotor");
-        backLeftMotor = hardwareMap.get(DcMotor.class, "backLeftMotor");
-        frontRightMotor = hardwareMap.get(DcMotor.class, "frontRightMotor");
-        backRightMotor = hardwareMap.get(DcMotor.class, "backRightMotor");
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
+
+        drive.init(hardwareMap);
 
         led1Left.init(hardwareMap, "led1_left");
         led1Right.init(hardwareMap, "led1_right");
         led2Left.init(hardwareMap, "led2_left");
         led2Right.init(hardwareMap, "led2_right");
 
-        // Reverse the right side motors. This may be wrong for your setup.
-        // If your robot moves backwards when commanded to go forwards,
-        // reverse the left side instead.
-        // See the note about this earlier on this page.
-        frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-        backRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         /*
          * Here we set our launcher to the RUN_USING_ENCODER runmode.
@@ -179,10 +167,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
          * slow down much faster when it is coasting. This creates a much more controllable
          * drivetrain. As the robot stops much quicker.
          */
-        frontLeftMotor.setZeroPowerBehavior(BRAKE);
-        backLeftMotor.setZeroPowerBehavior(BRAKE);
-        frontRightMotor.setZeroPowerBehavior(BRAKE);
-        backRightMotor.setZeroPowerBehavior(BRAKE);
         launcher.setZeroPowerBehavior(BRAKE);
 
         /*
@@ -254,24 +238,7 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     @Override
     public void loop() {
 
-        if (gamepad1.left_bumper) {
-            if (drivePower == 1.00) {
-                drivePower = 0.5;
-            } else {
-                drivePower = 1.00;
-            }
-        }
-        
-        // Manual control only
-        double forward = gamepad1.left_stick_y;
-        double turn = -gamepad1.right_stick_x;
-        double strafe = -gamepad1.left_stick_x;
-
-        forward = forward * drivePower;
-        turn = turn * drivePower;
-        strafe = strafe * drivePower;
-
-        setMecanum(forward, turn, strafe);
+        drive.runTeleOpLoop(gamepad1);
 
         /*
          * Here we give the user control of the speed of the launcher motor without automatically
@@ -301,7 +268,7 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
          * Show the state and motor powers
          */
         telemetry.addData("State", launchState);
-        telemetry.addData("Drive Power", drivePower);
+        telemetry.addData("Drive Power", drive.drivePower);
         telemetry.addData("Launcher", "Target (%.2f), Min (%.2f)", LAUNCHER_TARGET_VELOCITY, LAUNCHER_MIN_VELOCITY);
         telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
 
@@ -343,17 +310,5 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
                 }
                 break;
         }
-    }
-    private void setMecanum(double forward, double turn, double strafe) {
-
-        double frontLeftPower = (forward + turn + strafe);
-        double frontRightPower = (forward - turn - strafe);
-        double backLeftPower = (forward + turn - strafe);
-        double backRightPower = (forward - turn + strafe);
-
-        frontLeftMotor.setPower(frontLeftPower);
-        frontRightMotor.setPower(frontRightPower);
-        backLeftMotor.setPower(backLeftPower);
-        backRightMotor.setPower(backRightPower);
     }
 }
