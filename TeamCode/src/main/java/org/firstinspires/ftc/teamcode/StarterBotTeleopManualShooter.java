@@ -32,8 +32,6 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
-
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -57,8 +55,8 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "GoBildaStarterBotTeleopMecanum", group = "Production")
-public class GoBildaStarterBotTeleopMecanum extends OpMode {
+@TeleOp(name = "StarterBotTeleopManualShooter", group = "Production")
+public class StarterBotTeleopManualShooter extends OpMode {
 
     private ccLED led1Left = null;
     private ccLED led1Right = null;
