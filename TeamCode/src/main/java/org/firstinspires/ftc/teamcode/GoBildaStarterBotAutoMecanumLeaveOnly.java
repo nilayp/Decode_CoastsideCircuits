@@ -68,8 +68,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
  * main robot "loop," continuously checking for conditions that allow us to move to the next step.
  */
 
-@Autonomous(name="GoBildaStarterBotAutoMecanum", group="Production")
-public class GoBildaStarterBotAutoMecanum extends OpMode
+@Autonomous(name="GoBildaStarterBotAutoMecanumLeaveOnly", group="Production")
+public class GoBildaStarterBotAutoMecanumLeaveOnly extends OpMode
 {
 
     final double FEED_TIME = 0.20; //The feeder servos run this long when a shot is requested.
@@ -80,8 +80,8 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      * velocity. Here we are setting the target and minimum velocity that the launcher should run
      * at. The minimum velocity is a threshold for determining when to fire.
      */
-    final double LAUNCHER_TARGET_VELOCITY = 1700;
-    final double LAUNCHER_MIN_VELOCITY = 1650;
+    final double LAUNCHER_TARGET_VELOCITY = 1750;
+    final double LAUNCHER_MIN_VELOCITY = 1700;
 
     // PIDF Tuning Variables - Adjust these for tuning
     double kP = 50.0;  // Proportional gain
@@ -171,17 +171,8 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
      */
     private enum AutonomousState {
 
-        DRIVING_AWAY_FROM_AUDIENCE_WALL,
-        ROTATING_FOR_LAUNCH,
-        STRAFING_FOR_LAUNCH,
-        LAUNCH,
-        WAIT_FOR_LAUNCH,
-        STRAFING_AFTER_LAUNCH,
-        ROTATING_BACK,
-        DRIVE_TOWARDS_AUDIENCE_WALL,
-        STRAFING_OUT_OF_LAUNCH_ZONE,
-        DRIVING_AWAY_2,
-        COMPLETE;
+        LEAVE_FROM_AUDIENCE_WALL,
+        COMPLETE
     }
 
     private AutonomousState autonomousState;
@@ -221,7 +212,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
          * Later in our code, we will progress through the state machine by moving to other enum members.
          * We do the same for our launcher state machine, setting it to IDLE before we use it later.
          */
-        autonomousState = AutonomousState.DRIVING_AWAY_FROM_AUDIENCE_WALL;
+        autonomousState = AutonomousState.LEAVE_FROM_AUDIENCE_WALL;
         launchState = LaunchState.IDLE;
 
         /*
@@ -438,130 +429,15 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
              * "false" condition means that we are continuing to call the function every loop,
              * allowing it to cycle through and continue the process of launching the first ball.
              */
-            case DRIVING_AWAY_FROM_AUDIENCE_WALL:
+            case LEAVE_FROM_AUDIENCE_WALL:
                 /*
                  * Move the robot using timing. (We don't have encoder cables attached to the
                  * robot at this point.)
                  */
-                if(startDriveDistance(200, DRIVE_SPEED, false)) {
-                    autonomousState = AutonomousState.ROTATING_FOR_LAUNCH;
-                };
-                break;
-
-            case ROTATING_FOR_LAUNCH:
-                double robotRotationAngle = 15;
-
-                if (alliance == Alliance.RED) {
-                    robotRotationAngle = robotRotationAngle * -1;
-                }
-
-                if(rotate(ROTATE_SPEED, robotRotationAngle)){
-                    autonomousState = AutonomousState.STRAFING_FOR_LAUNCH;
-                }
-                break;
-
-            case STRAFING_FOR_LAUNCH:
-                /*
-                 * Move the robot using timing. (We don't have encoder cables attached to the
-                 * robot at this point.)
-                 */
-
-                double distance = 200;
-                if (alliance == Alliance.BLUE) {
-                    distance = distance * -1;
-                }
-
-                if(startDriveDistance(distance, DRIVE_SPEED, true)) {
-                    autonomousState = AutonomousState.LAUNCH;
-                };
-                break;
-
-            case LAUNCH:
-                launch(true);
-                autonomousState = AutonomousState.WAIT_FOR_LAUNCH;
-                break;
-
-            case WAIT_FOR_LAUNCH:
-                /*
-                 * A technique we leverage frequently in this code are functions which return a
-                 * boolean. We are using this function in two ways. This function actually moves the
-                 * motors and servos in a way that launches the ball, but it also "talks back" to
-                 * our main loop by returning either "true" or "false". We've written it so that
-                 * after the shot we requested has been fired, the function will return "true" for
-                 * one cycle. Once the launch function returns "true", we proceed in the code, removing
-                 * one from the shotsToFire variable. If shots remain, we move back to the LAUNCH
-                 * state on our state machine. Otherwise, we reset the encoders on our drive motors
-                 * and move onto the next state.
-                 */
-                if(launch(false)) {
-                    shotsToFire = shotsToFire - 1;
-                    if(shotsToFire > 0) {
-                        autonomousState = AutonomousState.LAUNCH;
-                    } else {
-                        launcher.setVelocity(0);
-                        autonomousState = AutonomousState.DRIVING_AWAY_2;
-                    }
-                }
-                break;
-            case DRIVING_AWAY_2:
-                /*
-                 * Move the robot using timing. (We don't have encoder cables attached to the
-                 * robot at this point.)
-                 */
-                if(startDriveDistance(200, DRIVE_SPEED, false)) {
+                if(startDriveDistance(840, DRIVE_SPEED, false)) {
                     autonomousState = AutonomousState.COMPLETE;
                 };
                 break;
-            case STRAFING_AFTER_LAUNCH:
-                /*
-                 * Move the robot using timing. (We don't have encoder cables attached to the
-                 * robot at this point.)
-                 */
-
-                distance = -226;
-                if (alliance == Alliance.BLUE) {
-                    distance = distance * -1;
-                }
-
-                if(startDriveDistance(distance, DRIVE_SPEED, true)) {
-                    autonomousState = AutonomousState.ROTATING_BACK;
-                };
-                break;
-
-            case ROTATING_BACK:
-                robotRotationAngle = 0;
-
-                if(rotate(ROTATE_SPEED, robotRotationAngle)){
-                    autonomousState = AutonomousState.DRIVE_TOWARDS_AUDIENCE_WALL;
-                }
-                break;
-
-            case DRIVE_TOWARDS_AUDIENCE_WALL:
-                /*
-                 * Move the robot using timing. (We don't have encoder cables attached to the
-                 * robot at this point.)
-                 */
-                if(startDriveDistance(-225, DRIVE_SPEED, false)) {
-                    autonomousState = AutonomousState.STRAFING_OUT_OF_LAUNCH_ZONE;
-                };
-                break;
-
-            case STRAFING_OUT_OF_LAUNCH_ZONE:
-                /*
-                 * Move the robot using timing. (We don't have encoder cables attached to the
-                 * robot at this point.)
-                 */
-
-                distance = -1170.0;
-                if (alliance == Alliance.BLUE) {
-                    distance = distance * -1;
-                }
-
-                if(startDriveDistance(distance, DRIVE_SPEED, true)) {
-                    autonomousState = AutonomousState.COMPLETE;
-                };
-                break;
-
         }
 
         /*
