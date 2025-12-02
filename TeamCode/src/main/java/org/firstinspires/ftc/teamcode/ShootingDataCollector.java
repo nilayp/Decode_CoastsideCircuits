@@ -22,6 +22,7 @@ import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -40,6 +41,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import java.io.FileWriter;
 
 @TeleOp(name = "Shooting Data Collector", group = "Data Collection")
+@Disabled
 public class ShootingDataCollector extends OpMode {
 
     // Hardware
@@ -417,7 +419,7 @@ public class ShootingDataCollector extends OpMode {
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
         double currentYaw = orientation.getYaw(AngleUnit.DEGREES);
 
-        telemetry.addData("Position", "X:%.3f Y:%.3f Heading:%.3f", currentPos.x, currentPos.y, currentYaw);
+        telemetry.addData("Position", "X:%.3f Y:%.3f IMU Heading:%.3f", currentPos.x, currentPos.y, currentYaw);
         telemetry.addData("Drive Power", "%.1f%%", drivePower * 100);
         telemetry.addData("Launcher", "Current (%.2f), Target (%.2f), Min (%.2f)", launcher.getVelocity(), LAUNCHER_TARGET_VELOCITY, LAUNCHER_MIN_VELOCITY);
         telemetry.addLine();

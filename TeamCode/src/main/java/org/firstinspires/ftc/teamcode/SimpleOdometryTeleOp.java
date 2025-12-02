@@ -31,6 +31,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
  * See the sensor's product page: https://www.sparkfun.com/products/24904
  */
 @TeleOp(name = "SimpleOdometryTeleOp", group = "Software")
+@Disabled
 public class SimpleOdometryTeleOp extends LinearOpMode {
     // Create an instance of the sensor
     SparkFunOTOS myOtos = null;

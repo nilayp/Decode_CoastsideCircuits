@@ -34,6 +34,7 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -55,7 +56,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 */
 
 @TeleOp(name = "TestBench", group = "Software")
-//@Disabled
+@Disabled
 public class TestBench extends OpMode {
 
     // Declare OpMode members.
