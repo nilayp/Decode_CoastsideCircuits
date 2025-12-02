@@ -2,12 +2,12 @@ package org.firstinspires.ftc.teamcode.mechanisms;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
-import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.gamepad1;
-
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Gamepad;
+
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class ccDrive {
 
@@ -46,8 +46,8 @@ public class ccDrive {
         backRightMotor.setZeroPowerBehavior(BRAKE);
     }
 
-    public void runTeleOpLoop(Gamepad gamepad1) {
-        if (gamepad1.left_bumper) {
+    public void runTeleOpLoop(Gamepad gamepad, Telemetry telemetry) {
+        if (gamepad.left_bumper) {
             if (drivePower == 1.00) {
                 drivePower = 0.5;
             } else {
@@ -56,11 +56,13 @@ public class ccDrive {
         }
 
         // Manual control only
-        double forward = gamepad1.left_stick_y * drivePower;
-        double turn = -gamepad1.right_stick_x * drivePower;
-        double strafe = -gamepad1.left_stick_x * drivePower;
+        double forward = gamepad.left_stick_y * drivePower;
+        double turn = -gamepad.right_stick_x * drivePower;
+        double strafe = -gamepad.left_stick_x * drivePower;
 
         setMecanum(forward, turn, strafe);
+
+        telemetry.addData("Drive Power", drivePower);
     }
     private void setMecanum(double forward, double turn, double strafe) {
 
