@@ -34,31 +34,15 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
-import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-
-
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -95,45 +79,7 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
      */
     final double LAUNCHER_TARGET_VELOCITY = 1750;  // Value needed to reliably shoot from back launch zone
     final double LAUNCHER_MIN_VELOCITY = 1700;     // 50 tick tolerance for "ready to fire"
-    
-    /*
-    // Data-driven shooting rectangle (to be determined from field experiments)
-    // TODO: Update these values based on shooting test data
-    private static class ShootingRectangle {
-        double minX, maxX, minY, maxY;  // Rectangle boundaries in meters
-        
-        ShootingRectangle(double minX, double maxX, double minY, double maxY) {
-            this.minX = minX;
-            this.maxX = maxX;
-            this.minY = minY;
-            this.maxY = maxY;
-        }
-        
-        boolean contains(double x, double y) {
-            return x >= minX && x <= maxX && y >= minY && y <= maxY;
-        }
-    }
-    
-    // Shooting rectangles for each alliance (placeholder values - update from test data)
-    private final ShootingRectangle RED_SHOOTING_RECT = new ShootingRectangle(-1.5, -0.5, 0.5, 1.5);
-    private final ShootingRectangle BLUE_SHOOTING_RECT = new ShootingRectangle(0.5, 1.5, 0.5, 1.5);
-    
-    // Function to calculate optimal shooting yaw based on position
-    // TODO: Replace with polynomial or lookup table from experimental data
-    private double calculateOptimalYaw(double x, double y) {
-        // Placeholder calculation - replace with data-driven approach
-        if (alliance == Alliance.RED) {
-            // For red alliance, approximate calculation
-            // TODO: Use experimental data to create accurate function
-            return Math.toDegrees(Math.atan2(3.7 - y, 0.0 - x));  // Aim toward red basket
-        } else {
-            // For blue alliance
-            // TODO: Use experimental data to create accurate function  
-            return Math.toDegrees(Math.atan2(3.7 - y, 0.0 - x));  // Aim toward blue basket
-        }
-    }
-    final double YAW_TOLERANCE = 2.0;         // Yaw tolerance in degrees
-    */
+
     // PIDF Tuning Variables - Adjust these for tuning
     double kP = 50.0;  // Proportional gain
     double kI = 0.0;    // Integral gain  
@@ -160,10 +106,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     private LED led2RightGreen = null;
     private LED led2RightRed = null;
 
-    // private Limelight3A limelight;
-    // private IMU imu;
-    // private SparkFunOTOS myOtos = null;
-
     ElapsedTime feederTimer = new ElapsedTime();
 
     /*
@@ -186,34 +128,18 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         IDLE,
         SPIN_UP,
         LAUNCH,
-        LAUNCHING,
+        LAUNCHING
     }
 
     private LaunchState launchState;
 
     private enum Alliance {
         RED,
-        BLUE;
+        BLUE
     }
 
     private Alliance alliance = Alliance.RED;
 
-    // Shooting rectangle alignment status
-    /*
-    private boolean inShootingRectangle = false;
-    private boolean headingAligned = false;
-    private double optimalYaw = 0.0;
-    private boolean alignmentRequested = false;
-
-
-    private enum RobotInAutomaticMotion {
-        NO,
-        DRIVING,
-        ROTATING;
-    }
-
-    private RobotInAutomaticMotion robotInMotion = RobotInAutomaticMotion.NO;
-*/
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -238,9 +164,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         led2LeftRed = hardwareMap.get(LED.class, "led2_left_red");
         led2RightGreen = hardwareMap.get(LED.class, "led2_right_green");
         led2RightRed = hardwareMap.get(LED.class, "led2_right_red");
-        // imu = hardwareMap.get(IMU.class, "imu");
-        // limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        // myOtos = hardwareMap.get(SparkFunOTOS.class, "sensor_otos");
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,
@@ -282,26 +205,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
          * both work to feed the ball into the robot.
          */
         leftFeeder.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        /*
-         * Initialize the IMU and set the correct orientation
-
-
-        IMU.Parameters parms = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
-        )
-        );
-        imu.initialize(parms);
-        imu.resetYaw();
-
-        /*
-         * Start the limelight so pipeline switching works properly
-
-        limelight.start();
-
-        // All the configuration for the OTOS is done in this helper method, check it out!
-        configureOtos();
 
         /*
          * Tell the driver that initialization is complete.
@@ -348,21 +251,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Press SQUARE", "for BLUE");
         telemetry.addData("Press CIRCLE", "for RED");
         telemetry.addData("Selected Alliance", alliance);
-        // telemetry.addData("Pipeline", alliance == Alliance.RED ? "0 (Red AprilTag #24)" : "1 (Blue AprilTag #20)");
-
-        // Get the latest position, which includes the x and y coordinates, plus the
-        // heading angle from both the OTOS and built-in IMU sensors.
-
-        /*SparkFunOTOS.Pose2D pos = myOtos.getPosition();
-        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
-
-        telemetry.addLine("Sensor Readings - should be close to 0 for each one.");
-        // Log the OTOS & IMU position to the telemetry
-        telemetry.addData("OTOS X coordinate (m)", pos.x);
-        telemetry.addData("OTOS Y coordinate (m)", pos.y);
-        telemetry.addData("OTOS Heading angle (degrees)", pos.h);
-        telemetry.addData("IMU Yaw", ypr.getYaw(AngleUnit.DEGREES));
-         */
     }
 
     /*
@@ -393,10 +281,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
                 drivePower = 1.00;
             }
         }
-
-        // Check shooting rectangle status and LED control
-        // checkShootingStatus();
-        // updateShootingLEDs();
         
         // Manual control only
         double forward = gamepad1.left_stick_y;
@@ -431,19 +315,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
             led1RightRed.on();
             led1LeftRed.on();
         }
-        /*
-         * Alignment button - when pressed in shooting rectangle, align to optimal yaw
-
-        if (gamepad1.cross && inShootingRectangle) {
-            alignmentRequested = true;
-            rotate(0.3, optimalYaw);
-        }
-        
-        // Reset alignment request if not in rectangle
-        if (!inShootingRectangle) {
-            alignmentRequested = false;
-        }
-        */
 
         /*
          * Now we call our "Launch" function.
@@ -458,80 +329,9 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         telemetry.addData("Launcher", "Target (%.2f), Min (%.2f)", LAUNCHER_TARGET_VELOCITY, LAUNCHER_MIN_VELOCITY);
         telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
 
-        /*
-        // Simple two-sensor system status
-        SparkFunOTOS.Pose2D currentOTOS = myOtos.getPosition();
-        YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-        double currentYaw = orientation.getYaw(AngleUnit.DEGREES);
-        
-        telemetry.addLine();
-        telemetry.addLine("=== SHOOTING SYSTEM STATUS ===");
-        telemetry.addData("Position", "X:%.3f Y:%.3f meters", currentOTOS.x, currentOTOS.y);
-        telemetry.addData("Heading", "%.1f°", currentYaw);
-        
-        // Distance calibration help
-        double totalDistance = Math.sqrt(currentOTOS.x * currentOTOS.x + currentOTOS.y * currentOTOS.y);
-        telemetry.addLine();
-
-        
-        // Shooting rectangle status
-        telemetry.addLine();
-        ShootingRectangle currentRect = (alliance == Alliance.RED) ? RED_SHOOTING_RECT : BLUE_SHOOTING_RECT;
-        telemetry.addData("Alliance", "%s", alliance);
-        telemetry.addData("Shooting Rectangle", "X:[%.1f,%.1f] Y:[%.1f,%.1f]", 
-                         currentRect.minX, currentRect.maxX, currentRect.minY, currentRect.maxY);
-        telemetry.addData("In Rectangle", "%s %s", inShootingRectangle ? "YES" : "NO", 
-                         inShootingRectangle ? "✓" : "✗");
-        
-        if (inShootingRectangle) {
-            telemetry.addData("Optimal Yaw", "%.1f°", optimalYaw);
-            if (alignmentRequested) {
-                double yawError = optimalYaw - currentYaw;
-                while (yawError > 180) yawError -= 360;
-                while (yawError < -180) yawError += 360;
-                telemetry.addData("Yaw Error", "%.1f° (Target: ±%.1f°)", yawError, YAW_TOLERANCE);
-                telemetry.addData("Heading Aligned", "%s %s", headingAligned ? "YES" : "NO", 
-                                 headingAligned ? "✓" : "✗");
-            } else {
-                telemetry.addData("Alignment", "Press X to align heading");
-            }
-        }
-
-        // LED status
-        telemetry.addData("LED2 Left (Position)", inShootingRectangle ? "GREEN" : "RED");
-        telemetry.addData("LED2 Right (Heading)", headingAligned ? "GREEN" : "RED");
-        telemetry.addData("Ready to Fire", (inShootingRectangle && headingAligned) ? "YES - BOTH GREEN!" : "NO");
-        */
-
         telemetry.update();
 
     }
-    
-    /**
-     * Controls LEDs to indicate shooting readiness
-     * Left LED2: Green when in shooting rectangle
-     * Right LED2: Green when heading aligned (after alignment requested)
-
-    private void updateShootingLEDs() {
-        // Left LED2: Position status (green when in shooting rectangle)
-        if (inShootingRectangle) {
-            led2LeftGreen.on();
-            led2LeftRed.off();
-        } else {
-            led2LeftGreen.off();
-            led2LeftRed.on();
-        }
-        
-        // Right LED2: Heading alignment status (green when aligned)
-        if (headingAligned) {
-            led2RightGreen.on();
-            led2RightRed.off();
-        } else {
-            led2RightGreen.off();
-            led2RightRed.on();
-        }
-    }
-     */
 
     /*
      * Code to run ONCE after the driver hits STOP
@@ -568,45 +368,6 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
                 break;
         }
     }
-    
-    /**
-     * Checks if robot is in shooting rectangle and calculates optimal alignment
-
-    private void checkShootingStatus() {
-        // Get current position and heading
-        SparkFunOTOS.Pose2D currentPos = myOtos.getPosition();
-        double currentX = currentPos.x;
-        double currentY = currentPos.y;
-        
-        // Get IMU heading
-        YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-        double currentYaw = orientation.getYaw(AngleUnit.DEGREES);
-        
-        // Check if in shooting rectangle
-        ShootingRectangle currentRect = (alliance == Alliance.RED) ? RED_SHOOTING_RECT : BLUE_SHOOTING_RECT;
-        inShootingRectangle = currentRect.contains(currentX, currentY);
-        
-        if (inShootingRectangle) {
-            // Calculate optimal yaw for current position
-            optimalYaw = calculateOptimalYaw(currentX, currentY);
-            
-            // Check heading alignment (only if alignment was requested)
-            if (alignmentRequested) {
-                double yawError = optimalYaw - currentYaw;
-                // Normalize yaw error to [-180, 180]
-                while (yawError > 180) yawError -= 360;
-                while (yawError < -180) yawError += 360;
-                
-                headingAligned = Math.abs(yawError) < YAW_TOLERANCE;
-            } else {
-                headingAligned = false;
-            }
-        } else {
-            headingAligned = false;
-            alignmentRequested = false;
-        }
-    }
-     */
     private void setMecanum(double forward, double turn, double strafe) {
 
         double frontLeftPower = (forward + turn + strafe);
@@ -619,154 +380,4 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         backLeftMotor.setPower(backLeftPower);
         backRightMotor.setPower(backRightPower);
     }
-/*
-    private static double wrapAngleDeg(double a) {
-        while (a > 180) {
-            a = a - 360;
-        }
-        while (a <= -180) {
-            a = a + 360;
-        }
-        return a;
-    }
-
-    /**
-     * Rotates the robot to a specific angle using the IMU.
-     * @param speed The speed at which to rotate (0 to 1).
-     * @param targetAngle The target angle to rotate to, in degrees.
-     * @return True if the rotation is complete, false otherwise.
-
-    public boolean rotate(double speed, double targetAngle) {
-        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
-        double currentAngle = ypr.getYaw(AngleUnit.DEGREES);
-        double error = wrapAngleDeg(targetAngle - currentAngle);
-
-        if (robotInMotion == RobotInAutomaticMotion.NO) {
-            robotInMotion = RobotInAutomaticMotion.ROTATING;
-        }
-
-        if (Math.abs(error) > 1) {
-            if (error < 0) {
-                speed = speed * -1.0;
-            }
-
-            setMecanum(0, speed, 0);
-            error = wrapAngleDeg(targetAngle - currentAngle);
-
-            telemetry.addData("Rotating", "Target: %.1f, Current: %.1f, Error: %.1f", targetAngle, currentAngle, error);
-            telemetry.update();
-
-            return false; // rotation has not yet completed.
-
-        } else {
-            // Robot has completed rotation.
-            setMecanum(0,0,0);
-            robotInMotion = RobotInAutomaticMotion.NO;
-            return true;
-        }
-    }
-
-    private void configureOtos() {
-        telemetry.addLine("Configuring OTOS...");
-        telemetry.update();
-
-        // Set the desired units for linear and angular measurements. Can be either
-        // meters or inches for linear, and radians or degrees for angular. If not
-        // set, the default is inches and degrees. Note that this setting is not
-        // persisted in the sensor, so you need to set at the start of all your
-        // OpModes if using the non-default value.
-        myOtos.setLinearUnit(DistanceUnit.METER);
-        // myOtos.setLinearUnit(DistanceUnit.INCH);
-        // myOtos.setAngularUnit(AnguleUnit.RADIANS);
-        myOtos.setAngularUnit(AngleUnit.DEGREES);
-
-        // Assuming you've mounted your sensor to a robot and it's not centered,
-        // you can specify the offset for the sensor relative to the center of the
-        // robot. The units default to inches and degrees, but if you want to use
-        // different units, specify them before setting the offset! Note that as of
-        // firmware version 1.0, these values will be lost after a power cycle, so
-        // you will need to set them each time you power up the sensor. For example, if
-        // the sensor is mounted 5 inches to the left (negative X) and 10 inches
-        // forward (positive Y) of the center of the robot, and mounted 90 degrees
-        // clockwise (negative rotation) from the robot's orientation, the offset
-        // OTOS Mounting Position: 6cm LEFT of robot center
-        // X=0 (no forward/back offset), Y=0.06 (6cm left is POSITIVE Y), H=0 (no rotation)
-        // This tells OTOS where it's mounted relative to robot center
-        SparkFunOTOS.Pose2D offset = new SparkFunOTOS.Pose2D(0.0, 0.06, 0.0);
-        myOtos.setOffset(offset);
-
-        // Here we can set the linear and angular scalars, which can compensate for
-        // scaling issues with the sensor measurements. Note that as of firmware
-        // version 1.0, these values will be lost after a power cycle, so you will
-        // need to set them each time you power up the sensor. They can be any value
-        // from 0.872 to 1.127 in increments of 0.001 (0.1%). It is recommended to
-        // first set both scalars to 1.0, then calibrate the angular scalar, then
-        // the linear scalar. To calibrate the angular scalar, spin the robot by
-        // multiple rotations (eg. 10) to get a precise error, then set the scalar
-        // to the inverse of the error. Remember that the angle wraps from -180 to
-        // 180 degrees, so for example, if after 10 rotations counterclockwise
-        // (positive rotation), the sensor reports -15 degrees, the required scalar
-        // would be 3600/3585 = 1.004. To calibrate the linear scalar, move the
-        // robot a known distance and measure the error; do this multiple times at
-        // multiple speeds to get an average, then set the linear scalar to the
-        // inverse of the error. For example, if you move the robot 100 inches and
-        // the sensor reports 103 inches, set the linear scalar to 100/103 = 0.971
-        // Set calibration scalar from constant (update OTOS_LINEAR_SCALAR after testing)
-        myOtos.setLinearScalar(1.0);
-        myOtos.setAngularScalar(1.0);    // Angular not used (we use IMU for heading)
-
-        // ENHANCED IMU CALIBRATION - Robot must be completely still!
-        telemetry.addLine("OTOS IMU CALIBRATION - KEEP ROBOT PERFECTLY STILL!");
-        telemetry.addLine("Calibrating for 5 seconds...");
-        telemetry.update();
-        
-        // Extended calibration with more samples for drift reduction
-        myOtos.calibrateImu(500, true);  // 500 samples (longer calibration)
-        
-        telemetry.addLine("Calibration complete. Resetting tracking...");
-        telemetry.update();
-        
-        // Multiple reset cycles to ensure clean start
-        for (int i = 0; i < 3; i++) {
-            myOtos.resetTracking();
-            try { Thread.sleep(200); } catch (InterruptedException e) {}
-        }
-        
-        // Wait a moment for stabilization
-        try { Thread.sleep(500); } catch (InterruptedException e) {}
-        
-        // Force position to exact zero
-        SparkFunOTOS.Pose2D zeroPosition = new SparkFunOTOS.Pose2D(0.000, 0.000, 0.000);
-        myOtos.setPosition(zeroPosition);
-
-        // After resetting the tracking, the OTOS will report that the robot is at
-        // the origin. If your robot does not start at the origin, or you have
-        // another source of location information (eg. vision odometry), you can set
-        // the OTOS location to match and it will continue to track from there.
-        SparkFunOTOS.Pose2D currentPosition = new SparkFunOTOS.Pose2D(0, 0, 0);
-        myOtos.setPosition(currentPosition);
-
-        // Get the hardware and firmware version
-        SparkFunOTOS.Version hwVersion = new SparkFunOTOS.Version();
-        SparkFunOTOS.Version fwVersion = new SparkFunOTOS.Version();
-        myOtos.getVersionInfo(hwVersion, fwVersion);
-
-        // Verify calibration worked
-        SparkFunOTOS.Pose2D verifyPos = myOtos.getPosition();
-        
-        telemetry.addLine("=== OTOS CALIBRATION COMPLETE ===");
-        telemetry.addLine();
-        telemetry.addLine(String.format("Hardware: v%d.%d | Firmware: v%d.%d", hwVersion.major, hwVersion.minor, fwVersion.major, fwVersion.minor));
-        telemetry.addLine();
-        telemetry.addLine("CONFIGURATION:");
-        telemetry.addData("Mounting", "6cm LEFT of robot center");
-        telemetry.addData("Offset", "X:0.00 Y:0.06 H:0.0°");
-        telemetry.addData("IMU Calibration", "500 samples (extended)");
-        telemetry.addData("Initial Position", "X:%.4f Y:%.4f H:%.2f°", verifyPos.x, verifyPos.y, Math.toDegrees(verifyPos.h));
-        telemetry.addLine();
-        telemetry.addLine("Monitor for drift while stationary!");
-        telemetry.addData("Acceptable Drift", "< 0.01m position, < 0.1°/min heading");
-        telemetry.update();
-
-    } */
 }
