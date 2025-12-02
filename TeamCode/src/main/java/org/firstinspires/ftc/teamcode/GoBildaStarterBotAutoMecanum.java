@@ -87,7 +87,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         DRIVE_TOWARDS_AUDIENCE_WALL,
         STRAFING_OUT_OF_LAUNCH_ZONE,
         DRIVING_AWAY_2,
-        COMPLETE;
+        COMPLETE
     }
 
     private AutonomousState autonomousState;
@@ -179,7 +179,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                  */
                 if(drive.startDriveDistance(200,false, telemetry)) {
                     autonomousState = AutonomousState.ROTATING_FOR_LAUNCH;
-                };
+                }
                 break;
 
             case ROTATING_FOR_LAUNCH:
@@ -207,7 +207,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
                 if(drive.startDriveDistance(distance,true, telemetry)) {
                     autonomousState = AutonomousState.LAUNCH;
-                };
+                }
                 break;
 
             case LAUNCH:
@@ -244,7 +244,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                  */
                 if(drive.startDriveDistance(200,false, telemetry)) {
                     autonomousState = AutonomousState.COMPLETE;
-                };
+                }
                 break;
             case STRAFING_AFTER_LAUNCH:
                 /*
@@ -259,7 +259,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
                 if(drive.startDriveDistance(distance, true, telemetry)) {
                     autonomousState = AutonomousState.ROTATING_BACK;
-                };
+                }
                 break;
 
             case ROTATING_BACK:
@@ -277,7 +277,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
                  */
                 if(drive.startDriveDistance(-225,false, telemetry)) {
                     autonomousState = AutonomousState.STRAFING_OUT_OF_LAUNCH_ZONE;
-                };
+                }
                 break;
 
             case STRAFING_OUT_OF_LAUNCH_ZONE:
@@ -293,7 +293,7 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
 
                 if(drive.startDriveDistance(distance,true, telemetry)) {
                     autonomousState = AutonomousState.COMPLETE;
-                };
+                }
                 break;
 
         }
