@@ -5,12 +5,12 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class ccAllianceChooser {
 
-    private enum Alliance {
+    public enum Alliance {
         RED,
         BLUE
     }
 
-    private Alliance alliance = Alliance.RED;
+    public Alliance alliance = Alliance.RED;
 
     public void init() {
 
@@ -43,5 +43,4 @@ public class ccAllianceChooser {
         telemetry.addData("Press CIRCLE", "for RED");
         telemetry.addData("Selected Alliance", alliance);
     }
-
 }

@@ -37,8 +37,11 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.mechanisms.ccAllianceChooser;
 import org.firstinspires.ftc.teamcode.mechanisms.ccDrive;
+import org.firstinspires.ftc.teamcode.mechanisms.ccIMU;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLED;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
+import org.firstinspires.ftc.teamcode.mechanisms.ccLimelight;
+import org.firstinspires.ftc.teamcode.mechanisms.ccOtos;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -55,8 +58,8 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "StarterBotTeleopManualShooter", group = "Production")
-public class StarterBotTeleopManualShooter extends OpMode {
+@TeleOp(name = "StarterBotTeleopAutomatedShooter", group = "Production")
+public class StarterBotTeleopAutomatedShooter extends OpMode {
 
     private ccLED led1Left = null;
     private ccLED led1Right = null;
@@ -66,6 +69,11 @@ public class StarterBotTeleopManualShooter extends OpMode {
     private ccDrive drive = null;
     private ccLauncher launcher = null;
     private ccAllianceChooser allianceChooser = null;
+
+    // Sensors
+    private ccIMU ccimu = null;
+    private ccLimelight ccLimelight = null;
+    private ccOtos ccotos = null;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -80,6 +88,9 @@ public class StarterBotTeleopManualShooter extends OpMode {
         led2Left = new ccLED();
         led2Right = new ccLED();
         allianceChooser = new ccAllianceChooser();
+        ccimu = new ccIMU();
+        ccLimelight = new ccLimelight();
+        ccotos = new ccOtos();
 
         drive.init(hardwareMap);
         launcher.init(hardwareMap);
@@ -88,6 +99,11 @@ public class StarterBotTeleopManualShooter extends OpMode {
         led1Right.init(hardwareMap, "led1_right");
         led2Left.init(hardwareMap, "led2_left");
         led2Right.init(hardwareMap, "led2_right");
+
+        // Initialize Sensors
+        ccimu.init(hardwareMap);
+        ccLimelight.init(hardwareMap);
+        ccotos.init(hardwareMap, telemetry);
 
         /*
          * Tell the driver that initialization is complete.
@@ -104,6 +120,7 @@ public class StarterBotTeleopManualShooter extends OpMode {
     public void init_loop() {
 
         allianceChooser.init_loop(gamepad1, telemetry, led1Left, led1Right);
+        telemetry.addData("Pipeline", allianceChooser.alliance == ccAllianceChooser.Alliance.RED ? "0 (Red AprilTag #24)" : "1 (Blue AprilTag #20)");
         telemetry.update();
     }
 
@@ -112,6 +129,11 @@ public class StarterBotTeleopManualShooter extends OpMode {
      */
     @Override
     public void start() {
+        // Choose the correct Limelight Pipeline based on the chosen alliance
+        ccLimelight.switchPipelineByAlliance(allianceChooser.alliance);
+
+        led1Left.setLedOff();
+        led1Right.setRedLed();
         led2Left.setLedOff();
         led2Right.setLedOff();
     }
@@ -123,6 +145,10 @@ public class StarterBotTeleopManualShooter extends OpMode {
     public void loop() {
         drive.runTeleOpLoop(gamepad1, telemetry);
         launcher.runTeleOpLoop(gamepad1, telemetry, led1Left, led1Right);
+        ccLimelight.getMegaTag1Data(telemetry);
+        ccLimelight.getMegaTag2Data(ccimu, telemetry);
+        ccotos.loop(telemetry);
+        telemetry.addData("Yaw from IMU", ccimu.getYaw());
         telemetry.update();
     }
 

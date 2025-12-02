@@ -19,6 +19,50 @@ public class ccLauncher {
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
+    // Constants and other variables used for the AUTONOMOUS program
+
+    /*
+     * The number of seconds that we wait between each of our 3 shots from the launcher. This
+     * can be much shorter, but the longer break is reasonable since it maximizes the likelihood
+     * that each shot will score. (Used for the auto program.)
+     */
+    final double TIME_BETWEEN_SHOTS = 4;
+
+    public int shotsToFire = 3; //The number of shots to fire in this auto.
+
+    /*
+     * Here we create timers which we use in different parts of our code. Each of these is an
+     * "object," so even though they are all an instance of ElapsedTime(), they count independently
+     * from each other.
+     */
+    private final ElapsedTime shotTimer = new ElapsedTime();
+    private final ElapsedTime feederTimer = new ElapsedTime();
+
+    /*
+     * TECH TIP: State Machines
+     * We use "state machines" in a few different ways in this auto. The first step of a state
+     * machine is creating an enum that captures the different "states" that our code can be in.
+     * The core advantage of a state machine is that it allows us to continue to loop through code,
+     * and only run the bits of code we need to at different times. This state machine is called the
+     * "LaunchState." It reflects the current condition of the shooter motor when we request a shot.
+     * It starts at IDLE. When a shot is requested from the user, it'll move into PREPARE then LAUNCH.
+     * We can use higher level code to cycle through these states, but this allows us to write
+     * functions and autonomous routines in a way that avoids loops within loops, and "waits."
+     */
+    private enum AutoLaunchState {
+        IDLE,
+        PREPARE,
+        LAUNCH,
+    }
+
+    /*
+     * Here we create the instance of LaunchState that we use in code. This creates a unique object
+     * which can store the current condition of the shooter. In other applications, you may have
+     * multiple copies of the same enum which have different names. Here we just have one.
+     */
+    private AutoLaunchState autoLaunchState;
+
+
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
      * to read the current speed of the motor and apply more or less power to keep it at a constant
@@ -43,8 +87,6 @@ public class ccLauncher {
     private DcMotorEx launcher = null;
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
-
-    ElapsedTime feederTimer = new ElapsedTime();
 
     /*
      * TECH TIP: State Machines
@@ -109,6 +151,21 @@ public class ccLauncher {
 
         // Set the initial launchState to IDLE.
         launchState = LaunchState.IDLE;
+        autoLaunchState = AutoLaunchState.IDLE;
+
+    }
+
+    public void runAutoInitLoop() {
+        /*
+         * We also set the servo power to 0 here to make sure that the servo controller is booted
+         * up and ready to go.
+         */
+        rightFeeder.setPower(0);
+        leftFeeder.setPower(0);
+    }
+
+    public void runAutoLoop(Telemetry telemetry, ccLED left, ccLED right) {
+        updateLedBasedonLauncherStatus(left, right);
 
     }
 
@@ -123,6 +180,21 @@ public class ccLauncher {
             launcher.setVelocity(STOP_SPEED);
         }
 
+        updateLedBasedonLauncherStatus(left, right);
+
+        /*
+         * Now we call our "Launch" function.
+         */
+        launchTeleOp(gamepad.rightBumperWasPressed());
+        /*
+         * Show the state and motor powers
+         */
+        telemetry.addData("State", launchState);
+        telemetry.addData("Launcher", "Target (%.2f), Min (%.2f)", LAUNCHER_TARGET_VELOCITY, LAUNCHER_MIN_VELOCITY);
+        telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
+    }
+
+    private void updateLedBasedonLauncherStatus(ccLED left, ccLED right) {
         if (launcher.getVelocity() >= LAUNCHER_MIN_VELOCITY) {
             left.setGreenLed();
             right.setGreenLed();
@@ -131,19 +203,9 @@ public class ccLauncher {
             left.setRedLed();
             right.setRedLed();
         }
-
-        /*
-         * Now we call our "Launch" function.
-         */
-        launch(gamepad.rightBumperWasPressed());
-        /*
-         * Show the state and motor powers
-         */
-        telemetry.addData("State", launchState);
-        telemetry.addData("Launcher", "Target (%.2f), Min (%.2f)", LAUNCHER_TARGET_VELOCITY, LAUNCHER_MIN_VELOCITY);
-        telemetry.addData("Launcher motorSpeed", launcher.getVelocity());
     }
-    private void launch(boolean shotRequested) {
+
+    private void launchTeleOp(boolean shotRequested) {
         switch (launchState) {
             case IDLE:
                 if (shotRequested) {
@@ -170,5 +232,46 @@ public class ccLauncher {
                 }
                 break;
         }
+    }
+    /**
+     * Launches one ball, when a shot is requested spins up the motor and once it is above a minimum
+     * velocity, runs the feeder servos for the right amount of time to feed the next ball.
+     * @param shotRequested "true" if the user would like to fire a new shot, and "false" if a shot
+     *                      has already been requested and we need to continue to move through the
+     *                      state machine and launch the ball.
+     * @return "true" for one cycle after a ball has been successfully launched, "false" otherwise.
+     */
+    public boolean launchAuto(boolean shotRequested){
+        switch (autoLaunchState) {
+            case IDLE:
+                if (shotRequested) {
+                    autoLaunchState = AutoLaunchState.PREPARE;
+                    shotTimer.reset();
+                }
+                break;
+            case PREPARE:
+                launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY){
+                    launchState = LaunchState.LAUNCH;
+                    leftFeeder.setPower(1);
+                    rightFeeder.setPower(1);
+                    feederTimer.reset();
+                }
+                break;
+            case LAUNCH:
+                if (feederTimer.seconds() > FEED_TIME_SECONDS) {
+                    leftFeeder.setPower(0);
+                    rightFeeder.setPower(0);
+
+                    if(shotTimer.seconds() > TIME_BETWEEN_SHOTS){
+                        launchState = LaunchState.IDLE;
+                        return true;
+                    }
+                }
+        }
+        return false;
+    }
+    public void stopLauncherMotor() {
+        launcher.setVelocity(0);
     }
 }
