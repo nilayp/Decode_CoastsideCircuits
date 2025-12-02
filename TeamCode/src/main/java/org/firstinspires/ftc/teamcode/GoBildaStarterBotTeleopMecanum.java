@@ -40,9 +40,10 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.mechanisms.ccLED;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -96,15 +97,10 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
     private CRServo leftFeeder = null;
     private CRServo rightFeeder = null;
 
-    private LED led1LeftGreen = null;
-    private LED led1LeftRed = null;
-    private LED led1RightGreen = null;
-    private LED led1RightRed = null;
-
-    private LED led2LeftGreen = null;
-    private LED led2LeftRed = null;
-    private LED led2RightGreen = null;
-    private LED led2RightRed = null;
+    private ccLED led1Left = null;
+    private ccLED led1Right = null;
+    private ccLED led2Left = null;
+    private ccLED led2Right = null;
 
     ElapsedTime feederTimer = new ElapsedTime();
 
@@ -156,14 +152,11 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
         rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
-        led1LeftGreen = hardwareMap.get(LED.class, "led1_left_green");
-        led1LeftRed = hardwareMap.get(LED.class, "led1_left_red");
-        led1RightGreen = hardwareMap.get(LED.class, "led1_right_green");
-        led1RightRed = hardwareMap.get(LED.class, "led1_right_red");
-        led2LeftGreen = hardwareMap.get(LED.class, "led2_left_green");
-        led2LeftRed = hardwareMap.get(LED.class, "led2_left_red");
-        led2RightGreen = hardwareMap.get(LED.class, "led2_right_green");
-        led2RightRed = hardwareMap.get(LED.class, "led2_right_red");
+
+        led1Left.init(hardwareMap, "led1_left");
+        led1Right.init(hardwareMap, "led1_right");
+        led2Left.init(hardwareMap, "led2_left");
+        led2Right.init(hardwareMap, "led2_right");
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,
@@ -234,19 +227,12 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         // GREEN LED BLUE GOAL.
 
         if (alliance == Alliance.RED) {
-            led1RightRed.on();
-            led1LeftRed.on();
-
-            led1RightGreen.off();
-            led1LeftGreen.off();
+            led1Right.setRedLed();
+            led1Left.setRedLed();
         } else {
-            led1RightGreen.on();
-            led1LeftGreen.on();
-
-            led1RightRed.off();
-            led1LeftRed.off();
+            led1Right.setGreenLed();
+            led1Left.setGreenLed();
         }
-
 
         telemetry.addData("Press SQUARE", "for BLUE");
         telemetry.addData("Press CIRCLE", "for RED");
@@ -258,14 +244,8 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
      */
     @Override
     public void start() {
-        led1RightRed.off();
-        led1LeftRed.off();
-        led1RightGreen.off();
-        led1LeftGreen.off();
-        led2RightRed.off();
-        led2LeftRed.off();
-        led2RightGreen.off();
-        led2LeftGreen.off();
+        led1Right.setLedOff();
+        led1Left.setLedOff();
     }
 
     /*
@@ -304,16 +284,12 @@ public class GoBildaStarterBotTeleopMecanum extends OpMode {
         }
 
         if (launcher.getVelocity() >= LAUNCHER_MIN_VELOCITY) {
-            led1RightGreen.on();
-            led1LeftGreen.on();
-            led1RightRed.off();
-            led1LeftRed.off();
+            led1Right.setGreenLed();
+            led1Left.setGreenLed();
 
         } else {
-            led1RightGreen.off();
-            led1LeftGreen.off();
-            led1RightRed.on();
-            led1LeftRed.on();
+            led1Right.setRedLed();
+            led1Left.setRedLed();
         }
 
         /*
