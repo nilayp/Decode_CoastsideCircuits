@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -25,6 +26,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
  * our robot.
  */
 @Autonomous(name = "SoftwareRobotAutoProgram", group = "Software")
+@Disabled
 public class SoftwareRobotAutoProgram extends OpMode {
     // Create an instance of the sensor
     SparkFunOTOS myOtos = null;
@@ -39,7 +41,6 @@ public class SoftwareRobotAutoProgram extends OpMode {
     double rightPower = 0.0;
     double leftPower = 0.0;
     double speed_factor = 0.50;
-
     /*
      * Here we capture a few variables used in driving the robot.
      */
@@ -47,12 +48,15 @@ public class SoftwareRobotAutoProgram extends OpMode {
     final double ROTATE_SPEED = 0.2;
 
     // TODO: let's determine how far we can travel in one second.
-    public static double SPEED_MM_PER_SEC_AT_POWER_0p5 = 0; // at full power robot drives xxx mm ~ 1 second
-
+    double millimeters_per_second = 776.0;
+    ElapsedTime driveTimer;
 
     // TODO: Set up the state machine. What are the different states that we need to be prepared for?
     private enum AutonomousState {
-
+        MOVE_AWAY_FROM_WALL,
+        ROTATE_AWAY_FROM_GOAL,
+        MOVE_TOWARDS_RAMP,
+        COMPLETE;
     }
 
     private AutonomousState autonomousState;
@@ -66,6 +70,13 @@ public class SoftwareRobotAutoProgram extends OpMode {
     }
 
     private Alliance alliance;
+
+    private enum DrivingState {
+        STOPPED,
+        MOVING,
+        ROTATING;
+    }
+    private DrivingState drivingState;
 
     @Override
     public void init() {
@@ -109,8 +120,8 @@ public class SoftwareRobotAutoProgram extends OpMode {
         telemetry.addData("IMU Yaw", ypr.getYaw(AngleUnit.DEGREES));
         telemetry.update();
 
-        // TODO: Setup the first step of the state machine here.
-    // autonomousState = AutonomousState.;
+        alliance = Alliance.RED;
+        autonomousState = AutonomousState.MOVE_AWAY_FROM_WALL;
 }
 
     /*
@@ -126,6 +137,16 @@ public class SoftwareRobotAutoProgram extends OpMode {
         // the default should be red. Setup telemetry so you can see it.
         // There should be instructions on the screen
         // telemetry.addLine("")
+        if (gamepad1.square) {
+            alliance = Alliance.BLUE;
+        }
+        if (gamepad1.circle) {
+            alliance = Alliance.RED;
+        }
+        telemetry.addLine("Press gamepad1 square for BLUE.");
+        telemetry.addLine("Press gamepad1 circle for RED.");
+        telemetry.addData("Current Alliance is: ", alliance);
+        telemetry.update();
     }
 
     /*
@@ -145,6 +166,27 @@ public class SoftwareRobotAutoProgram extends OpMode {
         // Write any helper functions that are required to for example, drive the robot,
         // rotate the robot, etc.
 
+        switch (autonomousState) {
+            case MOVE_AWAY_FROM_WALL:
+                // move backwards 920mm
+                if(driveByDistance(-920, 0.50)) {
+                    autonomousState = AutonomousState.ROTATE_AWAY_FROM_GOAL;
+                }
+            case ROTATE_AWAY_FROM_GOAL:
+                // 45 degrees
+                double angle = 45.0;
+                if (alliance == Alliance.BLUE) {
+                    angle = angle * -1;
+                }
+                if(rotateByAngle(angle, 0.20)){
+                    autonomousState = AutonomousState.MOVE_TOWARDS_RAMP;
+                }
+            case MOVE_TOWARDS_RAMP:
+                // move forward 350mm
+                if (driveByDistance(350, 0.50)) {
+                    autonomousState = AutonomousState.COMPLETE;
+                }
+        }
 
         // Get the latest position, which includes the x and y coordinates, plus the
         // heading angle
@@ -279,5 +321,77 @@ public class SoftwareRobotAutoProgram extends OpMode {
         telemetry.addLine(String.format("OTOS Hardware Version: v%d.%d", hwVersion.major, hwVersion.minor));
         telemetry.addLine(String.format("OTOS Firmware Version: v%d.%d", fwVersion.major, fwVersion.minor));
         telemetry.update();
+    }
+    private boolean driveByDistance(double millimeters_to_drive, double speed) {
+
+        // The driveByDistance code has two parts - the initialization which should
+        // only run once. And the code that runs in a loop each time it's called.
+        // For initialization, set the drive state to active, then it computes the duration
+        // of the drive by dividing the distance by the speed. Remember to use the absolute
+        // value of the distance Math.abs() as you don't want a negative duration.
+        // set the power to be positive if you are going forward and negative if you
+        // are going backwards and set a timer (driveTimer.reset())
+        // Then, outside of the init, you want to determine the elapsedDuration
+        // timer.seconds(). If the elapsed duration >= drive duration, stop the motors
+        // set the state to stop driving and return true.
+        // Else - drive using the arcadeDrive function.
+        // return false to the drive loop will run again.
+
+        if (drivingState == DrivingState.STOPPED) {
+            driveTimer.reset();
+            drivingState = DrivingState.MOVING;
+            return false;
+        }
+        double runTimeSeconds = Math.abs(millimeters_to_drive) / millimeters_per_second;
+        double elapsedDuration = driveTimer.seconds();
+        if (elapsedDuration >= runTimeSeconds) {
+            arcadeDrive(0,0,0);
+            drivingState = DrivingState.STOPPED;
+            return true;
+        } else {
+            if (millimeters_to_drive < 0) {
+                speed = speed * -1.0;
+            }
+            arcadeDrive(speed, 0, 1.0);
+            return false;
+        }
+    }
+
+    private static double wrapAngleDeg(double a) {
+        while (a > 180) {
+            a = a - 360;
+        }
+        while (a <= -180) {
+            a = a + 360;
+        }
+        return a;
+    }
+    private boolean rotateByAngle(double angle_to_rotate, double speed) {
+
+        // The rotateByAngle code has two parts - the initialization which should
+        // only run once. And the code that runs in a loop each time it's called.
+        // you need to set the drive state to rotate.
+        // Likely, there is nothing to initialize unless you want a timeout timer
+        // get the currentAngle from the IMU
+        // YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
+        // double currentAngle = ypr.getYaw(AngleUnit.DEGREES);
+        // Calculate the error using the wrapAngleDeg function to ensure angles
+        // stay between -180 to 180. This is the fastest way to rotate. For example, if
+        // you need to rotate 270 degrees, having it rotate -90 would be faster.
+        // double error = wrapAngDegree (targetAngle - currentAngle);
+        // check whether we are 1 degree from the target. If so, stop the rotation and robot
+        // if not, rotate at the speed. After the movement method is called, calculate the
+        // error again so you can show it on the screen.
+        // return false if rotating and true if rotation is complete.
+
+        YawPitchRollAngles ypr = imu.getRobotYawPitchRollAngles();
+        double currentAngle = ypr.getYaw(AngleUnit.DEGREES);
+        double difference = wrapAngleDeg(angle_to_rotate - currentAngle);
+        if (difference < 0) {
+            speed = speed * -1.0;
+        }
+        arcadeDrive(0, speed,1.0);
+               
+        return true;
     }
 }
