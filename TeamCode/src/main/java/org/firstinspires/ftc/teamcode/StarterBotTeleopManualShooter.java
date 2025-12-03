@@ -103,7 +103,7 @@ public class StarterBotTeleopManualShooter extends OpMode {
     @Override
     public void init_loop() {
 
-        allianceChooser.init_loop(gamepad1, telemetry, led1Left, led1Right);
+        allianceChooser.init_loop(gamepad1, telemetry, led2Left, led2Right);
         telemetry.update();
     }
 
@@ -112,6 +112,8 @@ public class StarterBotTeleopManualShooter extends OpMode {
      */
     @Override
     public void start() {
+        led1Left.setLedOff();
+        led1Right.setLedOff();
         led2Left.setLedOff();
         led2Right.setLedOff();
     }
@@ -122,7 +124,7 @@ public class StarterBotTeleopManualShooter extends OpMode {
     @Override
     public void loop() {
         drive.runTeleOpLoop(gamepad1, telemetry);
-        launcher.runTeleOpLoop(gamepad1, telemetry, led1Left, led1Right);
+        launcher.runTeleOpLoop(gamepad1, telemetry, led2Left, led2Right);
         telemetry.update();
     }
 
