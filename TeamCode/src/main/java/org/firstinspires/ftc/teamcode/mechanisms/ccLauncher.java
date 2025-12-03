@@ -252,7 +252,7 @@ public class ccLauncher {
             case PREPARE:
                 launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
                 if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY){
-                    launchState = LaunchState.LAUNCH;
+                    autoLaunchState = AutoLaunchState.LAUNCH;
                     leftFeeder.setPower(1);
                     rightFeeder.setPower(1);
                     feederTimer.reset();
@@ -264,7 +264,7 @@ public class ccLauncher {
                     rightFeeder.setPower(0);
 
                     if(shotTimer.seconds() > TIME_BETWEEN_SHOTS){
-                        launchState = LaunchState.IDLE;
+                        autoLaunchState = AutoLaunchState.IDLE;
                         return true;
                     }
                 }
