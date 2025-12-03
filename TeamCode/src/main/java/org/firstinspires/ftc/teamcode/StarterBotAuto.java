@@ -58,7 +58,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
  */
 
 @Autonomous(name="GoBildaStarterBotAutoMecanum", group="Production")
-public class GoBildaStarterBotAutoMecanum extends OpMode
+public class StarterBotAuto extends OpMode
 {
 
     // Declare OpMode members.
