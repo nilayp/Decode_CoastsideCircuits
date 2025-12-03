@@ -146,6 +146,9 @@ public class GoBildaStarterBotAutoMecanum extends OpMode
         led1Right.setLedOff();
         led2Left.setLedOff();
         led2Right.setLedOff();
+        
+        // Reset shotsToFire to 3 for this autonomous run
+        launcher.shotsToFire = 3;
     }
 
     /*
