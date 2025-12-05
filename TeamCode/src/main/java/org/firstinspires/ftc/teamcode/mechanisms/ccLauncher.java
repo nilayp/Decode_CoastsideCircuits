@@ -73,8 +73,8 @@ public class ccLauncher {
      * Conversion: 2.18 RPM per tick/sec (confirmed accurate)
      * Target optimized for consistent high-performance launcher shots
      */
-    public final double LAUNCHER_TARGET_VELOCITY = 1750;  // Value needed to reliably shoot from back launch zone
-    public final double LAUNCHER_MIN_VELOCITY = 1700;     // 50 tick tolerance for "ready to fire"
+    public double LAUNCHER_TARGET_VELOCITY = 1750;  // Value needed to reliably shoot from back launch zone
+    public double LAUNCHER_MIN_VELOCITY = 1700;     // 50 tick tolerance for "ready to fire"
 
     // PIDF Tuning Variables - Adjust these for tuning
     double kP = 50.0;  // Proportional gain
@@ -113,7 +113,7 @@ public class ccLauncher {
 
     private LaunchState launchState;
 
-    public void init(HardwareMap map) {
+    public void init(HardwareMap map, double targetVelocity, double targetMinVelocity) {
 
         launcher = map.get(DcMotorEx.class, "launcher");
         leftFeeder = map.get(CRServo.class, "left_feeder");
@@ -152,6 +152,10 @@ public class ccLauncher {
         // Set the initial launchState to IDLE.
         launchState = LaunchState.IDLE;
         autoLaunchState = AutoLaunchState.IDLE;
+
+        // Set the requested velocity
+        LAUNCHER_TARGET_VELOCITY = targetVelocity;
+        LAUNCHER_MIN_VELOCITY = targetMinVelocity;
 
     }
 

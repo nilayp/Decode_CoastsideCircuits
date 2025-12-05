@@ -108,7 +108,7 @@ public class StarterBotAuto extends OpMode
         ccimu = new ccIMU();
 
         drive.init(hardwareMap);
-        launcher.init(hardwareMap);
+        launcher.init(hardwareMap, 1750, 1700);
         ccimu.init(hardwareMap);
 
         led1Left.init(hardwareMap, "led1_left");
