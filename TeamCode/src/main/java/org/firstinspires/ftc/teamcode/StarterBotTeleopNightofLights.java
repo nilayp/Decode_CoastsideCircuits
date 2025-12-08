@@ -35,8 +35,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.mechanisms.ccAllianceChooser;
-import org.firstinspires.ftc.teamcode.mechanisms.ccDrive;
+import org.firstinspires.ftc.teamcode.mechanisms.ccBlinkinLED;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLED;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
 
@@ -55,17 +54,15 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "StarterBotTeleopManualShooter", group = "Production")
-public class StarterBotTeleopManualShooter extends OpMode {
+@TeleOp(name = "StarterBotTeleopNightofLights", group = "Production")
+public class StarterBotTeleopNightofLights extends OpMode {
 
     private ccLED led1Left = null;
     private ccLED led1Right = null;
     private ccLED led2Left = null;
     private ccLED led2Right = null;
-
-    private ccDrive drive = null;
     private ccLauncher launcher = null;
-    private ccAllianceChooser allianceChooser = null;
+    // private ccBlinkinLED blinkinLED = null;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -73,21 +70,21 @@ public class StarterBotTeleopManualShooter extends OpMode {
     @Override
     public void init() {
 
-        drive = new ccDrive();
         launcher = new ccLauncher();
         led1Left = new ccLED();
         led1Right = new ccLED();
         led2Left = new ccLED();
         led2Right = new ccLED();
-        allianceChooser = new ccAllianceChooser();
+        // blinkinLED = new ccBlinkinLED();
 
-        drive.init(hardwareMap);
         launcher.init(hardwareMap, 1750, 1700);
 
         led1Left.init(hardwareMap, "led1_left");
         led1Right.init(hardwareMap, "led1_right");
         led2Left.init(hardwareMap, "led2_left");
         led2Right.init(hardwareMap, "led2_right");
+
+        // blinkinLED.init(hardwareMap, "blinkinLED");
 
         /*
          * Tell the driver that initialization is complete.
@@ -102,9 +99,6 @@ public class StarterBotTeleopManualShooter extends OpMode {
      */
     @Override
     public void init_loop() {
-
-        allianceChooser.init_loop(gamepad1, telemetry, led2Left, led2Right);
-        telemetry.update();
     }
 
     /*
@@ -112,8 +106,8 @@ public class StarterBotTeleopManualShooter extends OpMode {
      */
     @Override
     public void start() {
-        led1Left.setLedOff();
-        led1Right.setLedOff();
+        led1Left.setGreenLed();
+        led1Right.setGreenLed();
         led2Left.setLedOff();
         led2Right.setLedOff();
     }
@@ -123,8 +117,8 @@ public class StarterBotTeleopManualShooter extends OpMode {
      */
     @Override
     public void loop() {
-        drive.runTeleOpLoop(gamepad1, telemetry);
         launcher.runTeleOpLoop(gamepad1, telemetry, led2Left, led2Right);
+        // blinkinLED.loop(gamepad1, telemetry);
         telemetry.update();
     }
 

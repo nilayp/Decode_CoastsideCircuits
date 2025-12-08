@@ -32,6 +32,8 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import static java.lang.Math.abs;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -93,7 +95,7 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
         ccotos = new ccOtos();
 
         drive.init(hardwareMap);
-        launcher.init(hardwareMap);
+        launcher.init(hardwareMap, 1750, 1700);
 
         led1Left.init(hardwareMap, "led1_left");
         led1Right.init(hardwareMap, "led1_right");
@@ -119,7 +121,7 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
     @Override
     public void init_loop() {
 
-        allianceChooser.init_loop(gamepad1, telemetry, led1Left, led1Right);
+        allianceChooser.init_loop(gamepad1, telemetry, led2Left, led2Right);
         telemetry.addData("Pipeline", allianceChooser.alliance == ccAllianceChooser.Alliance.RED ? "0 (Red AprilTag #24)" : "1 (Blue AprilTag #20)");
         telemetry.update();
     }
@@ -143,8 +145,8 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
      */
     @Override
     public void loop() {
-        drive.runTeleOpLoop(gamepad1, telemetry);
-        launcher.runTeleOpLoop(gamepad1, telemetry, led1Left, led1Right);
+        drive.runTeleOpSensorsLoop(gamepad1, telemetry, ccimu, ccLimelight, led1Left, led1Right);
+        launcher.runTeleOpLoop(gamepad1, telemetry, led2Left, led2Right);
         ccLimelight.getMegaTag1Data(telemetry);
         ccLimelight.getMegaTag2Data(ccimu, telemetry);
         ccotos.loop(telemetry);

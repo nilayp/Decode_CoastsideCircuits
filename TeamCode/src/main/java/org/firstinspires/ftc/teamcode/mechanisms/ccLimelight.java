@@ -50,4 +50,16 @@ public class ccLimelight {
             limelight.pipelineSwitch(1);
         }
     }
+
+    public double getTx(ccIMU ccimu) {
+        limelight.updateRobotOrientation(ccimu.getYaw());
+        LLResult llResult = limelight.getLatestResult();
+        if (llResult != null && llResult.isValid()) {
+            botpose = llResult.getBotpose_MT2();
+            return llResult.getTx();
+        }
+        // this code needs to return a double, even if there is no result from the
+        // limelight. -360.0 seemed safe.
+        return -360.0;
+    }
 }

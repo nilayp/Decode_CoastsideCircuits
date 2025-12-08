@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.mechanisms;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
+import static java.lang.Math.abs;
+
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -80,6 +82,7 @@ public class ccDrive {
     }
 
     public void runTeleOpLoop(Gamepad gamepad, Telemetry telemetry) {
+
         if (gamepad.left_bumper) {
             if (teleOpDrivePower == 1.00) {
                 teleOpDrivePower = 0.5;
@@ -97,7 +100,43 @@ public class ccDrive {
 
         telemetry.addData("Drive Power", teleOpDrivePower);
     }
-    private void setMecanum(double forward, double turn, double strafe) {
+
+    public void runTeleOpSensorsLoop(Gamepad gamepad, Telemetry telemetry, ccIMU ccimu, ccLimelight ccLimelight, ccLED leftLED, ccLED rightLED) {
+
+        if (gamepad.left_bumper) {
+            if (teleOpDrivePower == 1.00) {
+                teleOpDrivePower = 0.5;
+            } else {
+                teleOpDrivePower = 1.00;
+            }
+        }
+
+        // Manual control only
+        double forward = gamepad.left_stick_y * teleOpDrivePower;
+        double turn = -gamepad.right_stick_x * teleOpDrivePower;
+        double strafe = -gamepad.left_stick_x * teleOpDrivePower;
+
+        double currentTx = ccLimelight.getTx(ccimu);
+        if (abs(currentTx) < 2.0) {
+            leftLED.setGreenLed();
+            rightLED.setGreenLed();
+        } else {
+            leftLED.setRedLed();
+            rightLED.setRedLed();
+        }
+
+        if (gamepad.cross) {
+            if (currentTx != -360.0 && abs(currentTx) > 0) {
+                turn = rotateToTx(currentTx);
+            }
+        }
+
+        setMecanum(forward, turn, strafe);
+
+        telemetry.addData("Drive Power", teleOpDrivePower);
+    }
+
+    public void setMecanum(double forward, double turn, double strafe) {
 
         double frontLeftPower = (forward + turn + strafe);
         double frontRightPower = (forward - turn - strafe);
@@ -109,7 +148,10 @@ public class ccDrive {
         backLeftMotor.setPower(backLeftPower);
         backRightMotor.setPower(backRightPower);
     }
-    /** Start driving for an estimated distance (mm) and return whether the drive is complete. */
+
+    /**
+     * Start driving for an estimated distance (mm) and return whether the drive is complete.
+     */
     public boolean startDriveDistance(double distanceMM, boolean straffing, Telemetry telemetry) {
         double basePower = AUTO_DRIVE_SPEED;
         if (robotInMotion == RobotInMotion.STOPPED) {
@@ -149,7 +191,7 @@ public class ccDrive {
         }
     }
 
-    private double wrapAngleDeg ( double a){
+    private double wrapAngleDeg(double a) {
         while (a > 180) {
             a = a - 360;
         }
@@ -161,10 +203,11 @@ public class ccDrive {
 
     /**
      * Rotates the robot to a specific angle using the IMU.
+     *
      * @param targetAngle The target angle to rotate to, in degrees.
      * @return True if the rotation is complete, false otherwise.
      */
-    public boolean rotate(double targetAngle, ccIMU ccimu, Telemetry telemetry){
+    public boolean rotate(double targetAngle, ccIMU ccimu, Telemetry telemetry) {
         double speed = AUTO_ROTATE_SPEED;
         double currentAngle = ccimu.getYaw();
         double error = wrapAngleDeg(targetAngle - currentAngle);
@@ -190,5 +233,23 @@ public class ccDrive {
             robotInMotion = RobotInMotion.STOPPED;
             return true;
         }
+    }
+
+    /**
+     * Rotates the robot to a Tx value 0 (+/-) as seen by the Limelight.
+     *
+     * @param currentTx
+     * @return double value to rotate to
+     */
+    private double rotateToTx(double currentTx) {
+
+        currentTx = currentTx / 25.0; // factor determined by trial and error.
+
+        if (currentTx > 1.0) {
+            currentTx = 1.0;
+        } else if (currentTx < -1.0) {
+            currentTx = -1.0;
+        }
+        return -currentTx;
     }
 }
