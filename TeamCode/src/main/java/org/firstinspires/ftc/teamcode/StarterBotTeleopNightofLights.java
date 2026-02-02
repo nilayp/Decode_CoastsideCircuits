@@ -32,6 +32,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -55,6 +56,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
  */
 
 @TeleOp(name = "StarterBotTeleopNightofLights", group = "Production")
+@Disabled
 public class StarterBotTeleopNightofLights extends OpMode {
 
     private ccLED led1Left = null;

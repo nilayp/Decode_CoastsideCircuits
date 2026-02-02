@@ -32,6 +32,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -59,6 +60,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccPositionalServo;
  */
 
 @TeleOp(name = "OwlBotTeleOpManualShooter", group = "Production")
+@Disabled
 public class OwlBotTeleopManualShooter extends OpMode {
 
     private ccDrive drive = null;
