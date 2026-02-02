@@ -42,6 +42,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.ccDrive;
 import org.firstinspires.ftc.teamcode.mechanisms.ccIMU;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLED;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLauncher;
+import org.firstinspires.ftc.teamcode.mechanisms.ccLifter;
 import org.firstinspires.ftc.teamcode.mechanisms.ccLimelight;
 import org.firstinspires.ftc.teamcode.mechanisms.ccOtos;
 
@@ -69,13 +70,13 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
     private ccLED led2Right = null;
 
     private ccDrive drive = null;
+    private ccLifter lifter = null;
     private ccLauncher launcher = null;
     private ccAllianceChooser allianceChooser = null;
 
     // Sensors
     private ccIMU ccimu = null;
     private ccLimelight ccLimelight = null;
-    private ccOtos ccotos = null;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -84,6 +85,7 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
     public void init() {
 
         drive = new ccDrive();
+        lifter = new ccLifter();
         launcher = new ccLauncher();
         led1Left = new ccLED();
         led1Right = new ccLED();
@@ -92,10 +94,10 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
         allianceChooser = new ccAllianceChooser();
         ccimu = new ccIMU();
         ccLimelight = new ccLimelight();
-        ccotos = new ccOtos();
 
         drive.init(hardwareMap);
-        launcher.init(hardwareMap, 1750, 1700);
+        lifter.init(hardwareMap);
+        launcher.init(hardwareMap, 1850, 1800);
 
         led1Left.init(hardwareMap, "led1_left");
         led1Right.init(hardwareMap, "led1_right");
@@ -105,7 +107,6 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
         // Initialize Sensors
         ccimu.init(hardwareMap);
         ccLimelight.init(hardwareMap);
-        ccotos.init(hardwareMap, telemetry);
 
         /*
          * Tell the driver that initialization is complete.
@@ -146,10 +147,10 @@ public class StarterBotTeleopAutomatedShooter extends OpMode {
     @Override
     public void loop() {
         drive.runTeleOpSensorsLoop(gamepad1, telemetry, ccimu, ccLimelight, led1Left, led1Right);
+        lifter.runTeleOpLoop(gamepad1, telemetry);
         launcher.runTeleOpLoop(gamepad1, telemetry, led2Left, led2Right);
         ccLimelight.getMegaTag1Data(telemetry);
         ccLimelight.getMegaTag2Data(ccimu, telemetry);
-        ccotos.loop(telemetry);
         telemetry.addData("Yaw from IMU", ccimu.getYaw());
         telemetry.update();
     }
