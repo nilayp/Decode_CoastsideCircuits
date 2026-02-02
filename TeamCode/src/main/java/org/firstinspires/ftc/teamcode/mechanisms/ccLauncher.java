@@ -77,10 +77,10 @@ public class ccLauncher {
     public double LAUNCHER_MIN_VELOCITY = 0;     // 50 tick tolerance for "ready to fire"
 
     // PIDF Tuning Variables - Adjust these for tuning
-    double kP = 50.0;  // Proportional gain
+    double kP = 8.0;  // Proportional gain
     double kI = 0.0;    // Integral gain
     double kD = 0.0;    // Derivative gain
-    double kF = 14.166;   // Feedforward gain
+    double kF = 13.5;   // Feedforward gain
 
     // Declare OpMode members.
 
