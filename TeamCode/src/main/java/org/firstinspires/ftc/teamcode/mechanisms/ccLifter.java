@@ -89,7 +89,6 @@ public class ccLifter {
 
         // the big button has it go up for 25 seconds
         if (gamepad.touchpad) {
-            telemetry.addLine("touchpad pushed");
             lift(true);
         }
 
@@ -104,12 +103,10 @@ public class ccLifter {
         }
 
         telemetry.addData("Lift Power", currentLiftSpeed);
-        telemetry.addData("Auto Lift State", autoLiftState);
-        telemetry.addData("Lift Timer", liftTimer.seconds());
-        telemetry.addData("dpad_up", gamepad.dpad_up);
-        telemetry.addData("dpad_down", gamepad.dpad_down);
-        telemetry.addData("dpad_right", gamepad.dpad_right);
-        telemetry.addData("dpad_left", gamepad.dpad_left);
+        if (autoLiftState == AutoLiftState.GOING_UP) {
+            telemetry.addData("Auto Lift State", autoLiftState);
+            telemetry.addData("Lift Timer", liftTimer.seconds());
+        }
     }
 
     private void lift(boolean liftRequested) {
