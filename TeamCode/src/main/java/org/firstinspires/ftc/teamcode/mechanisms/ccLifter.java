@@ -18,12 +18,20 @@ public class ccLifter {
 
     private final ElapsedTime liftTimer = new ElapsedTime();
 
-    // === TUNE ME: speed constant (mm/sec) for a given power ===
-    // Measure your lift's travel to determine the speed
-    public static double SPEED_MM_PER_SEC_AT_POWER_0p5 = 610;
+    // === TUNE ME: # of seconds to lift ===
+    public static double MAX_LIFT_SECONDS = 24;
 
     final double DEFAULT_LIFT_SPEED = 0.2;
     double currentLiftSpeed = 0.0;
+
+    private enum AutoLiftState {
+        IDLE,
+        INIT,
+        GOING_UP,
+        STOP
+    }
+
+    private AutoLiftState autoLiftState;
 
     public void init(HardwareMap map) {
 
@@ -46,6 +54,7 @@ public class ccLifter {
         rightLiftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         currentLiftSpeed = 0.0;
+        autoLiftState = AutoLiftState.IDLE;
     }
 
     public void runTeleOpLoop(Gamepad gamepad, Telemetry telemetry) {
@@ -75,7 +84,16 @@ public class ccLifter {
         // share button stops
         if (gamepad.share) {
             currentLiftSpeed = 0.0;
+            autoLiftState = AutoLiftState.STOP;
         }
+
+        // the big button has it go up for 25 seconds
+        if (gamepad.touchpad) {
+            telemetry.addLine("touchpad pushed");
+            lift(true);
+        }
+
+        lift(false);
 
         // apply to motors if initialized
         if (leftLiftMotor != null && rightLiftMotor != null) {
@@ -86,9 +104,35 @@ public class ccLifter {
         }
 
         telemetry.addData("Lift Power", currentLiftSpeed);
+        telemetry.addData("Auto Lift State", autoLiftState);
+        telemetry.addData("Lift Timer", liftTimer.seconds());
         telemetry.addData("dpad_up", gamepad.dpad_up);
         telemetry.addData("dpad_down", gamepad.dpad_down);
         telemetry.addData("dpad_right", gamepad.dpad_right);
         telemetry.addData("dpad_left", gamepad.dpad_left);
+    }
+
+    private void lift(boolean liftRequested) {
+        switch (autoLiftState) {
+            case IDLE:
+                if (liftRequested) {
+                    autoLiftState = AutoLiftState.INIT;
+                }
+                break;
+            case INIT:
+                liftTimer.reset();
+                currentLiftSpeed = 1.0;
+                autoLiftState = AutoLiftState.GOING_UP;
+                break;
+            case GOING_UP:
+                if (liftTimer.seconds() > MAX_LIFT_SECONDS) {
+                    autoLiftState = AutoLiftState.STOP;
+                }
+                break;
+            case STOP:
+                currentLiftSpeed = 0.0;
+                autoLiftState = AutoLiftState.IDLE;
+                break;
+        }
     }
 }
