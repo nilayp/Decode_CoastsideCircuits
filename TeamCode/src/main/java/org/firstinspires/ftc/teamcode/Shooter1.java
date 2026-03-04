@@ -7,8 +7,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.PwmControl;   // for PWM range
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.R;
-
 @TeleOp(name="Shooter1")
 @Disabled
 public class Shooter1 extends LinearOpMode {
@@ -27,7 +25,7 @@ public class Shooter1 extends LinearOpMode {
 
 @Override
     public void runOpMode() throws InterruptedException {
-        turntable = hardwareMap.get(Servo.class, "potato");
+        turntable = hardwareMap.get(Servo.class, "turret");
 
         // Match Stingray’s full control band (spec is ~500–2500 µs).
         // This lets 0.0 -> 500 µs and 1.0 -> 2500 µs for full 200°.
@@ -55,8 +53,16 @@ public class Shooter1 extends LinearOpMode {
             double rightStickY = -gamepad1.right_stick_y;
 
             // --- Button Overrides ---
-            // Dpad-up resets turntable to 100°, or the middle allowable position
-            if (gamepad1.dpad_up) {
+            // Dpad-right moves turret to the right
+            if (gamepad1.dpad_right) {
+                turntable_targetDeg += TURNTABLE_MAX_DEG_PER_STEP;
+            }
+            // Dpad-left moves turret to the left
+            if (gamepad1.dpad_left) {
+                turntable_targetDeg -= TURNTABLE_MAX_DEG_PER_STEP;
+            }
+            // Share button resets turntable to the middle allowable position
+            if (gamepad1.share) {
                 turntable_targetDeg = TURNTABLE_MAX_DEGREES / 2;
             }
 
@@ -86,7 +92,6 @@ public class Shooter1 extends LinearOpMode {
             telemetry.addData("Right Stick Y", "%.3f", rightStickY);
             telemetry.update();
 
-            sleep(20); // ~50 Hz loop
         }
     }
 
