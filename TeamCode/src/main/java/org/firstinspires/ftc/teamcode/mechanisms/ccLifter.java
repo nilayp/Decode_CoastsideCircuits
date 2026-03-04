@@ -19,15 +19,18 @@ public class ccLifter {
     private final ElapsedTime liftTimer = new ElapsedTime();
 
     // === TUNE ME: # of seconds to lift ===
-    public static double MAX_LIFT_SECONDS = 24;
+    public static double MAX_LIFT_LEFT_SECONDS = 8.25;
+    public static double MAX_LIFT_RIGHT_SECONDS = 8.50;
 
     final double DEFAULT_LIFT_SPEED = 0.2;
-    double currentLiftSpeed = 0.0;
+    double currentLeftLiftSpeed = 0.0;
+    double currentRightLiftSpeed = 0.0;
 
     private enum AutoLiftState {
         IDLE,
         INIT,
-        GOING_UP,
+        GOING_UP_BOTH,
+        GOING_UP_RIGHT_MORE,
         STOP
     }
 
@@ -41,10 +44,8 @@ public class ccLifter {
         leftLiftMotor = map.get(DcMotor.class, "leftLiftMotor");
         rightLiftMotor = map.get(DcMotor.class, "rightLiftMotor");
 
-        leftLiftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-
         // Ensure both directions are explicit so motors move together
-        leftLiftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftLiftMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         rightLiftMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         leftLiftMotor.setZeroPowerBehavior(BRAKE);
@@ -53,7 +54,8 @@ public class ccLifter {
         leftLiftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightLiftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        currentLiftSpeed = 0.0;
+        currentRightLiftSpeed = 0.0;
+        currentLeftLiftSpeed = 0.0;
         autoLiftState = AutoLiftState.IDLE;
     }
 
@@ -61,29 +63,39 @@ public class ccLifter {
 
         // Up / Down set direction directly
         if (gamepad.dpad_up) {
-            currentLiftSpeed = DEFAULT_LIFT_SPEED;
+            currentRightLiftSpeed = DEFAULT_LIFT_SPEED;
+            currentLeftLiftSpeed = DEFAULT_LIFT_SPEED;
         } else if (gamepad.dpad_down) {
-            currentLiftSpeed = -DEFAULT_LIFT_SPEED;
+            currentRightLiftSpeed = -DEFAULT_LIFT_SPEED;
+            currentLeftLiftSpeed = -DEFAULT_LIFT_SPEED;
         }
 
         // dpad_right increases magnitude (preserve sign; if zero, start positive)
         if (gamepad.dpad_right) {
-            double sign = Math.signum(currentLiftSpeed);
-            if (sign == 0.0) sign = 1.0;
-            currentLiftSpeed = Math.copySign(Math.min(1.0, Math.abs(currentLiftSpeed) + 0.10), sign);
+            double signR = Math.signum(currentRightLiftSpeed);
+            if (signR == 0.0) signR = 1.0;
+            currentRightLiftSpeed = Math.copySign(Math.min(1.0, Math.abs(currentRightLiftSpeed) + 0.10), signR);
+            double signL = Math.signum(currentLeftLiftSpeed);
+            if (signL == 0.0) signL = 1.0;
+            currentLeftLiftSpeed = Math.copySign(Math.min(1.0, Math.abs(currentLeftLiftSpeed) + 0.10), signL);
         }
 
         // dpad_left decreases magnitude (preserve sign)
         if (gamepad.dpad_left) {
-            double sign = Math.signum(currentLiftSpeed);
-            if (sign != 0.0) {
-                currentLiftSpeed = Math.copySign(Math.max(0.0, Math.abs(currentLiftSpeed) - 0.10), sign);
+            double signR = Math.signum(currentRightLiftSpeed);
+            if (signR != 0.0) {
+                currentRightLiftSpeed = Math.copySign(Math.max(0.0, Math.abs(currentRightLiftSpeed) - 0.10), signR);
+            }
+            double signL = Math.signum(currentLeftLiftSpeed);
+            if (signL != 0.0) {
+                currentLeftLiftSpeed = Math.copySign(Math.max(0.0, Math.abs(currentLeftLiftSpeed) - 0.10), signL);
             }
         }
 
         // share button stops
         if (gamepad.share) {
-            currentLiftSpeed = 0.0;
+            currentRightLiftSpeed = 0.0;
+            currentLeftLiftSpeed = 0.0;
             autoLiftState = AutoLiftState.STOP;
         }
 
@@ -96,14 +108,15 @@ public class ccLifter {
 
         // apply to motors if initialized
         if (leftLiftMotor != null && rightLiftMotor != null) {
-            leftLiftMotor.setPower(currentLiftSpeed);
-            rightLiftMotor.setPower(currentLiftSpeed);
+            leftLiftMotor.setPower(currentLeftLiftSpeed);
+            rightLiftMotor.setPower(currentRightLiftSpeed);
         } else {
             telemetry.addData("Lift", "motors not initialized");
         }
 
-        telemetry.addData("Lift Power", currentLiftSpeed);
-        if (autoLiftState == AutoLiftState.GOING_UP) {
+        telemetry.addData("Left Lift Power", currentLeftLiftSpeed);
+        telemetry.addData("Right Lift Power", currentRightLiftSpeed);
+        if (autoLiftState == AutoLiftState.GOING_UP_BOTH) {
             telemetry.addData("Auto Lift State", autoLiftState);
             telemetry.addData("Lift Timer", liftTimer.seconds());
         }
@@ -118,16 +131,25 @@ public class ccLifter {
                 break;
             case INIT:
                 liftTimer.reset();
-                currentLiftSpeed = 1.0;
-                autoLiftState = AutoLiftState.GOING_UP;
+                currentLeftLiftSpeed = 1.0;
+                currentRightLiftSpeed = 1.0;
+                autoLiftState = AutoLiftState.GOING_UP_BOTH;
                 break;
-            case GOING_UP:
-                if (liftTimer.seconds() > MAX_LIFT_SECONDS) {
+            case GOING_UP_BOTH:
+                if (liftTimer.seconds() > MAX_LIFT_LEFT_SECONDS) {
+                    autoLiftState = AutoLiftState.GOING_UP_RIGHT_MORE;
+                }
+                break;
+            case GOING_UP_RIGHT_MORE:
+                currentLeftLiftSpeed = 0.0;
+                currentRightLiftSpeed = 1.0;
+                if (liftTimer.seconds() > MAX_LIFT_RIGHT_SECONDS) {
                     autoLiftState = AutoLiftState.STOP;
                 }
                 break;
             case STOP:
-                currentLiftSpeed = 0.0;
+                currentLeftLiftSpeed = 0.0;
+                currentRightLiftSpeed = 0.0;
                 autoLiftState = AutoLiftState.IDLE;
                 break;
         }

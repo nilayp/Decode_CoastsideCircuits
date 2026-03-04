@@ -108,7 +108,7 @@ public class StarterBotAuto extends OpMode
         ccimu = new ccIMU();
 
         drive.init(hardwareMap);
-        launcher.init(hardwareMap, 1750, 1700);
+        launcher.init(hardwareMap, 1800, 1850);
         ccimu.init(hardwareMap);
 
         led1Left.init(hardwareMap, "led1_left");
@@ -148,7 +148,7 @@ public class StarterBotAuto extends OpMode
         led2Right.setLedOff();
         
         // Reset shotsToFire to 3 for this autonomous run
-        launcher.shotsToFire = 3;
+        launcher.shotsToFire = 6;
     }
 
     /*
@@ -245,7 +245,7 @@ public class StarterBotAuto extends OpMode
                  * Move the robot using timing. (We don't have encoder cables attached to the
                  * robot at this point.)
                  */
-                if(drive.startDriveDistance(200,false, telemetry)) {
+                if(drive.startDriveDistance(400,false, telemetry)) {
                     autonomousState = AutonomousState.COMPLETE;
                 }
                 break;
